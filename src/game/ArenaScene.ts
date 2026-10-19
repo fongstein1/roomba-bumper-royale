@@ -9,6 +9,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { FurnitureCollider, DustPickup, HazardZone, PickupType } from '../types/game';
 import { FloorTextureManager } from './FloorTextureManager';
 import { soundSynth } from '../audio/SoundSynth';
+import { disposeObject } from './disposeObject';
 
 export interface DogUpdateResult {
   grabbedRobotId: string | null;
@@ -33,6 +34,7 @@ export interface ArenaComponents {
   spawnDroppedDust: (x: number, z: number, count: number) => void;
   spawnHighValueCleanBurst: (x: number, z: number, color?: number) => void;
   spawnDynamicHighValueSpot: () => DustPickup | null;
+  resetMatch: () => void;
 }
 
 export function createDesignerPenthouse(
@@ -1011,8 +1013,7 @@ export function createDesignerPenthouse(
   function cleanHazard(id: string) {
     const m = hazardMeshes.get(id);
     if (m) {
-      scene.remove(m);
-      hazardMeshes.delete(id);
+      m.visible = false;
     }
     const h = hazards.find((hz) => hz.id === id);
     if (h) {
@@ -1236,11 +1237,13 @@ export function createDesignerPenthouse(
   pickups.forEach((p) => {
     pickupMeshes.set(p.id, createPickupMesh(p));
   });
+  const initialPickups = pickups.map((pickup) => ({ ...pickup }));
 
   function removePickupMesh(id: string) {
     const m = pickupMeshes.get(id);
     if (m) {
       scene.remove(m);
+      disposeObject(m);
       pickupMeshes.delete(id);
     }
   }
@@ -1304,8 +1307,16 @@ export function createDesignerPenthouse(
     if (activeHighValue.length >= 3) return null;
 
     // Pick location away from walls and dog bed
-    const rx = (Math.random() - 0.5) * 20;
-    const rz = (Math.random() - 0.5) * 20;
+    let rx = 0;
+    let rz = 0;
+    let clear = false;
+    for (let attempt = 0; attempt < 30; attempt++) {
+      rx = (Math.random() - 0.5) * 20;
+      rz = (Math.random() - 0.5) * 20;
+      clear = !colliders.some((col) => Math.abs(rx - col.x) < col.width / 2 + 1 && Math.abs(rz - col.z) < col.depth / 2 + 1);
+      if (clear) break;
+    }
+    if (!clear) return null;
 
     const types: PickupType[] = ['golden_dust', 'diamond_spill', 'sparkle_cache'];
     const chosenType = types[Math.floor(Math.random() * types.length)];
@@ -1386,6 +1397,10 @@ export function createDesignerPenthouse(
       sp.life -= dt;
       if (sp.life <= 0) {
         scene.remove(sp.mesh);
+        // Each burst shares resources; release them after its last particle expires.
+        if (!sparkleParticles.some((other) => other !== sp && other.mesh.geometry === sp.mesh.geometry && other.life > 0)) {
+          disposeObject(sp.mesh);
+        }
         sparkleParticles.splice(i, 1);
         continue;
       }
@@ -1397,6 +1412,30 @@ export function createDesignerPenthouse(
       sp.mesh.rotation.y += 6 * dt;
       sp.mesh.scale.setScalar(Math.max(0.01, sp.life / sp.maxLife));
     }
+  }
+
+  function resetMatch() {
+    for (const id of Array.from(pickupMeshes.keys())) removePickupMesh(id);
+    pickups.splice(0, pickups.length, ...initialPickups.map((pickup) => ({ ...pickup })));
+    pickups.forEach((pickup) => pickupMeshes.set(pickup.id, createPickupMesh(pickup)));
+    hazards.forEach((hazard) => { hazard.cleaned = false; });
+    hazardMeshes.forEach((mesh) => { mesh.visible = true; });
+    sparkleParticles.forEach((particle) => {
+      scene.remove(particle.mesh);
+      disposeObject(particle.mesh);
+    });
+    sparkleParticles.length = 0;
+    pickupAnimTime = 0;
+    dogX = 0;
+    dogZ = -2;
+    dogHeading = 0;
+    dogStatus = 'patrol';
+    grabbedRobotId = null;
+    cooldownTimer = 0;
+    walkPhase = 0;
+    barkCooldown = 0;
+    dogGroup.position.set(dogX, 0, dogZ);
+    dogGroup.rotation.set(0, 0, 0);
   }
 
   return {
@@ -1415,5 +1454,6 @@ export function createDesignerPenthouse(
     spawnDroppedDust,
     spawnHighValueCleanBurst,
     spawnDynamicHighValueSpot,
+    resetMatch,
   };
 }

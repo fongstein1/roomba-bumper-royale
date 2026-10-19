@@ -80,9 +80,9 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
   };
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-between p-4 md:p-8 pointer-events-none select-none">
+    <div className="garage-screen absolute inset-0 z-20 flex flex-col justify-between gap-4 p-4 md:p-8 pointer-events-none select-none">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between w-full pointer-events-auto">
+      <div className="garage-header flex flex-wrap gap-3 items-center justify-between w-full pointer-events-auto">
         <button
           onClick={onBack}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-900/80 border border-neutral-700/60 text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors text-sm font-medium cursor-pointer"
@@ -108,7 +108,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
       {/* Central 3D Viewport is unobstructed */}
 
       {/* Collapsible/Sleek Bottom Control Dock (Consolidated zero side-panel occlusion) */}
-      <div className="pointer-events-auto mx-auto w-full max-w-4xl bg-neutral-900/90 border border-neutral-700/80 rounded-2xl p-4 md:p-6 shadow-2xl backdrop-blur-md">
+      <div className="garage-dock menu-scroll pointer-events-auto mx-auto w-full max-w-4xl bg-neutral-900/90 border border-neutral-700/80 rounded-2xl p-4 md:p-6 shadow-2xl backdrop-blur-md">
         {/* Robot Device Selector Tabs */}
         <div className="flex items-center gap-2 border-b border-neutral-800 pb-3 mb-4 overflow-x-auto">
           {profiles.map((p) => {
@@ -150,6 +150,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
               Vacuum Device Name
             </label>
             <input
+              aria-label="Vacuum device name"
               type="text"
               value={currentProfile.name}
               onChange={(e) => updateName(e.target.value)}
@@ -265,6 +266,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
             </label>
             <div className="flex items-center gap-3 bg-neutral-950 p-2 rounded-lg border border-neutral-800">
               <input
+                aria-label="LED underglow color"
                 type="color"
                 value={currentProfile.skin.underglowColor}
                 onChange={(e) => updateCurrentSkin({ underglowColor: e.target.value })}

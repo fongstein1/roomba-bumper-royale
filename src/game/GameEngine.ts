@@ -16,6 +16,8 @@ import { createProceduralRoomba, RoombaMeshParts } from './ProceduralRoomba';
 import { createDesignerPenthouse, ArenaComponents } from './ArenaScene';
 import { FloorTextureManager } from './FloorTextureManager';
 import { soundSynth } from '../audio/SoundSynth';
+import { totalScore } from './scoring';
+import { disposeObject } from './disposeObject';
 
 export class GameEngine {
   public canvasContainer: HTMLElement;
@@ -52,11 +54,20 @@ export class GameEngine {
     }
   }
 
+  public clearInputs() {
+    this.keysHeld.clear();
+    for (const input of Object.values(this.virtualInputs)) {
+      for (const action of Object.keys(input)) input[action as keyof typeof input] = false;
+    }
+  }
+
   // Match loop
   private isRunning: boolean = false;
   private isPaused: boolean = false;
   private animationFrameId: number | null = null;
   private lastTime: number = 0;
+  private scoreUpdateTime = 0;
+  private lowGraphics = false;
   public matchTimeRemaining: number = 90; // 90 second matches
   public matchTotalTime: number = 90;
 
@@ -100,9 +111,13 @@ export class GameEngine {
       antialias: true,
       alpha: false,
     });
+    const gl = this.renderer.getContext?.();
+    const debug = gl?.getExtension('WEBGL_debug_renderer_info');
+    const rendererName = debug ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : '';
+    this.lowGraphics = !!window.matchMedia?.('(pointer: coarse)').matches || /swiftshader|llvmpipe|software/i.test(rendererName);
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.lowGraphics ? 1 : 2));
+    this.renderer.shadowMap.enabled = !this.lowGraphics;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -114,6 +129,15 @@ export class GameEngine {
 
     // Arena Scene
     this.arena = createDesignerPenthouse(this.renderer, this.floorManager, 30);
+    if (this.lowGraphics) {
+      this.arena.scene.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) {
+          if (material instanceof THREE.MeshPhysicalMaterial) material.transmission = 0;
+        }
+      });
+    }
 
     // Cameras
     const aspect = width / height;
@@ -128,8 +152,9 @@ export class GameEngine {
 
     // Bind event handlers
     this.boundKeyDown = (e: KeyboardEvent) => {
+      if (!this.isRunning || this.isPaused || (e.target instanceof HTMLElement && e.target.closest('input, textarea, select'))) return;
       // Prevent browser default scrolling on arrow keys and space
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter'].includes(e.key)) {
         e.preventDefault();
       }
       this.keysHeld.add(e.code);
@@ -138,7 +163,7 @@ export class GameEngine {
       this.keysHeld.delete(e.code);
     };
     this.boundBlur = () => {
-      this.keysHeld.clear();
+      this.clearInputs();
       soundSynth.stopEngineHum();
     };
     this.boundResize = () => {
@@ -161,11 +186,14 @@ export class GameEngine {
 
   public initRobots() {
     // Clear existing
-    this.meshes.forEach((m) => this.arena.scene.remove(m.group));
+    this.meshes.forEach((m) => {
+      this.arena.scene.remove(m.group);
+      disposeObject(m.group);
+    });
     this.meshes.clear();
     this.states.clear();
 
-    const spawnRadius = 8.5;
+    const spawnRadius = Math.sqrt(200); // Clear corner lanes at (+/-10, +/-10).
     const count = this.profiles.length;
 
     this.profiles.forEach((profile, index) => {
@@ -182,7 +210,7 @@ export class GameEngine {
         z: sz,
         vx: 0,
         vz: 0,
-        heading: angle + Math.PI, // face toward arena center
+        heading: Math.atan2(-sx, -sz), // face toward arena center
         speed: 0,
         angularVelocity: 0,
         boost: 100,
@@ -208,41 +236,57 @@ export class GameEngine {
   }
 
   public updateProfiles(newProfiles: RobotProfile[]) {
+    const previousProfiles = this.profiles;
     this.profiles = newProfiles;
     this.profiles.forEach((p) => {
       const meshParts = this.meshes.get(p.id);
-      if (meshParts) {
+      if (meshParts && previousProfiles.find((old) => old.id === p.id)?.skin !== p.skin) {
         meshParts.updateSkin(p.skin);
       }
     });
   }
 
   public startMatch(durationSeconds: number = 90) {
+    this.stopMatch();
+    this.arena.resetMatch();
+    this.highValueTimer = 0;
+    this.scoreUpdateTime = 0;
+    this.cameraShake = 0;
+    this.hitstopDuration = 0;
+    this.lastDogStatus = 'patrol';
     this.matchTimeRemaining = durationSeconds;
     this.matchTotalTime = durationSeconds;
     this.floorManager.resetDust();
     this.initRobots();
+    // Warm the restored scene before starting the clock: shader compilation can
+    // otherwise consume a large part of a rematch on software/mobile renderers.
+    this.render();
     this.isRunning = true;
     this.isPaused = false;
     this.lastTime = performance.now();
     soundSynth.ensureContext();
-    this.loop();
+    this.onTimeUpdate?.(durationSeconds);
+    this.calculateMatchScores();
+    this.lastTime = performance.now();
+    this.animationFrameId = requestAnimationFrame(this.loop);
   }
 
   public pauseMatch() {
     this.isPaused = true;
+    this.clearInputs();
     soundSynth.stopEngineHum();
   }
 
   public resumeMatch() {
+    if (!this.isRunning || !this.isPaused) return;
     this.isPaused = false;
     this.lastTime = performance.now();
     soundSynth.ensureContext();
-    this.loop();
   }
 
   public stopMatch() {
     this.isRunning = false;
+    this.clearInputs();
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -256,7 +300,8 @@ export class GameEngine {
     this.animationFrameId = requestAnimationFrame(this.loop);
 
     const now = performance.now();
-    let dt = (now - this.lastTime) / 1000;
+    const elapsed = Math.max(0, (now - this.lastTime) / 1000);
+    let dt = elapsed;
     this.lastTime = now;
 
     // Clamp dt to avoid physics tunnelling
@@ -267,6 +312,15 @@ export class GameEngine {
       return;
     }
 
+    // Wall-clock match duration is independent of rendering rate and collision hitstop.
+    this.matchTimeRemaining = Math.max(0, this.matchTimeRemaining - elapsed);
+    this.onTimeUpdate?.(Math.ceil(this.matchTimeRemaining));
+    if (this.matchTimeRemaining <= 0) {
+      this.calculateMatchScores();
+      this.endMatch();
+      return;
+    }
+
     // Hitstop micro-dilation
     if (this.hitstopDuration > 0) {
       this.hitstopDuration -= dt;
@@ -274,17 +328,20 @@ export class GameEngine {
       return;
     }
 
-    // Match Timer Countdown
-    this.matchTimeRemaining -= dt;
-    if (this.onTimeUpdate) {
-      this.onTimeUpdate(Math.max(0, Math.ceil(this.matchTimeRemaining)));
-    }
+    // Catch up short slow frames in safe collision steps instead of slowing the game.
+    const simulationTime = Math.min(elapsed, 0.5);
+    const steps = Math.max(1, Math.ceil(simulationTime / 0.05));
+    for (let step = 0; step < steps; step++) this.updateSimulation(simulationTime / steps);
+    this.render();
 
-    if (this.matchTimeRemaining <= 0) {
-      this.endMatch();
-      return;
+    this.scoreUpdateTime += elapsed;
+    if (this.scoreUpdateTime >= 0.1) {
+      this.scoreUpdateTime = 0;
+      this.calculateMatchScores();
     }
+  };
 
+  private updateSimulation(dt: number) {
     // Physics & Actor Updates
     this.updatePhysics(dt);
 
@@ -352,14 +409,7 @@ export class GameEngine {
       soundSynth.updateEngineHum(p1State.speed / 8.0, p1State.isBoosting);
     }
 
-    // Render Scene (Single Camera or Split-Screen Viewports)
-    this.render();
-
-    // Coverage & Leaderboard Calculation (throttled every ~100ms)
-    if (Math.random() < 0.1) {
-      this.calculateMatchScores();
-    }
-  };
+  }
 
   private updatePhysics(dt: number) {
     const arenaBound = 14.3; // Half arena size minus Roomba radius
@@ -508,10 +558,10 @@ export class GameEngine {
           const overlapZ = halfD - Math.abs(dz);
 
           if (overlapX < overlapZ) {
-            state.x = col.x + Math.sign(dx) * halfW;
+            state.x = col.x + (Math.sign(dx) || 1) * halfW;
             state.vx = -state.vx * 0.5;
           } else {
-            state.z = col.z + Math.sign(dz) * halfD;
+            state.z = col.z + (Math.sign(dz) || 1) * halfD;
             state.vz = -state.vz * 0.5;
           }
           parts.triggerBumperCompression();
@@ -743,8 +793,7 @@ export class GameEngine {
   }
 
   private endMatch() {
-    this.isRunning = false;
-    soundSynth.stopEngineHum();
+    this.stopMatch();
     soundSynth.playVictory();
 
     const coverageData = this.floorManager.calculateCoverage();
@@ -765,10 +814,7 @@ export class GameEngine {
         };
       })
       .sort((a, b) => {
-        // Combined score: Coverage (70%) + Dust & Bump bonus
-        const scoreA = a.coveragePercent * 10 + a.dustPoints + a.bumpsGiven * 25;
-        const scoreB = b.coveragePercent * 10 + b.dustPoints + b.bumpsGiven * 25;
-        return scoreB - scoreA;
+        return totalScore(b) - totalScore(a);
       })
       .map((item, index) => ({
         ...item,
@@ -906,7 +952,7 @@ export class GameEngine {
     const height = this.canvasContainer.clientHeight;
 
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.lowGraphics ? 1 : 2));
 
     if (this.gameMode === 'splitscreen') {
       this.camera1.aspect = (width / 2) / height;
@@ -931,6 +977,8 @@ export class GameEngine {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
     this.floorManager.dispose();
+    disposeObject(this.arena.scene);
+    this.arena.scene.environment?.dispose();
     this.renderer.dispose();
   }
 }

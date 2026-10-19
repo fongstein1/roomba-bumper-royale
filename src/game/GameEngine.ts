@@ -275,8 +275,45 @@ export class GameEngine {
     // Physics & Actor Updates
     this.updatePhysics(dt);
 
-    // Update Arena Props & Dynamic Pet
-    this.arena.updatePet(dt);
+    // Update Arena Props & Dynamic Chasing Dog
+    const robotPositions = Array.from(this.states.values()).map((st) => ({
+      id: st.id,
+      x: st.x,
+      z: st.z,
+    }));
+    const dogResult = this.arena.updateDog(dt, robotPositions);
+
+    if (dogResult.grabbedRobotId) {
+      const gState = this.states.get(dogResult.grabbedRobotId);
+      const gParts = this.meshes.get(dogResult.grabbedRobotId);
+      if (gState && gParts) {
+        gState.isDogGrabbed = true;
+        gState.x = dogResult.mouthPos.x;
+        gState.z = dogResult.mouthPos.z;
+        gState.vx = 0;
+        gState.vz = 0;
+        gState.speed = 0;
+        // Roomba held up in dog's jaws with comical tilt and struggle wobble
+        gParts.group.position.set(gState.x, 0.38, gState.z);
+        gParts.group.rotation.x = 0.25;
+        gParts.group.rotation.z = Math.sin(Date.now() * 0.02) * 0.2;
+      }
+    }
+
+    if (dogResult.droppedRobotId) {
+      const dState = this.states.get(dogResult.droppedRobotId);
+      const dParts = this.meshes.get(dogResult.droppedRobotId);
+      if (dState && dParts) {
+        dState.isDogGrabbed = false;
+        dState.x = -11.0;
+        dState.z = -11.0;
+        dState.vx = 4.0;
+        dState.vz = 4.0;
+        dParts.group.position.set(dState.x, 0, dState.z);
+        dParts.group.rotation.set(0, dState.heading, 0);
+      }
+    }
+
     this.arena.updatePickups(dt);
 
     // Update Camera Shake
@@ -312,6 +349,12 @@ export class GameEngine {
       const state = this.states.get(profile.id);
       const parts = this.meshes.get(profile.id);
       if (!state || !parts) return;
+
+      // Handle Dog Grab (carried by dog to corner)
+      if (state.isDogGrabbed) {
+        parts.updateAnimation(dt, 0, false);
+        return;
+      }
 
       // Handle Stun
       if (state.stunTimer > 0) {

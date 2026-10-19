@@ -74,13 +74,212 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
   chamfer.position.y = height / 2 + 0.002;
   chassis.add(chamfer);
 
+  // Helper to generate high-resolution procedural livery decals on the Roomba's top plate
+  function createDecalCanvas(currentSkin: RobotSkinConfig): HTMLCanvasElement {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+
+    const w = 512;
+    const h = 512;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    // Base background matching primary color
+    ctx.fillStyle = currentSkin.primaryColor;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 250, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer accent rim
+    ctx.strokeStyle = currentSkin.accentColor;
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 240, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Decal graphics depending on type or Joyride sponsor
+    const isJoyride = currentSkin.decal === 'joyride_fleet' || currentSkin.sponsor === 'joyride';
+
+    if (isJoyride) {
+      // OFFICIAL JOYRIDE FLEET GRAPHICS (Shared Scooter & Bike Fleet SaaS)
+      // Tech grid background
+      ctx.strokeStyle = 'rgba(0, 242, 254, 0.18)';
+      ctx.lineWidth = 2;
+      for (let x = 60; x <= w - 60; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 60);
+        ctx.lineTo(x, h - 60);
+        ctx.stroke();
+      }
+      for (let y = 60; y <= h - 60; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(60, y);
+        ctx.lineTo(w - 60, y);
+        ctx.stroke();
+      }
+
+      // Neon cyan telemetry track arc
+      ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 190, -Math.PI * 0.75, Math.PI * 0.75);
+      ctx.stroke();
+
+      // Fleet Connected Waves (top arc)
+      ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 3;
+      for (let r = 205; r <= 225; r += 10) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, -Math.PI * 0.35, Math.PI * 0.35);
+        ctx.stroke();
+      }
+
+      // Center Joyride badge badge
+      ctx.fillStyle = 'rgba(11, 19, 43, 0.92)';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 20, 110, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Joyride Electric Scooter Silhouette in Cyan
+      ctx.fillStyle = '#00f2fe';
+      ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      const scX = cx;
+      const scY = cy - 20;
+
+      // Scooter Wheels
+      ctx.beginPath();
+      ctx.arc(scX - 35, scY + 22, 10, 0, Math.PI * 2);
+      ctx.arc(scX + 35, scY + 22, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      // Scooter Deck & Steering Column
+      ctx.beginPath();
+      ctx.moveTo(scX - 35, scY + 22);
+      ctx.lineTo(scX + 35, scY + 22);
+      ctx.lineTo(scX + 26, scY - 26);
+      ctx.lineTo(scX + 12, scY - 26); // handlebar
+      ctx.stroke();
+
+      // Bold "JOYRIDE" brand text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 42px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('JOYRIDE', cx, cy + 35);
+
+      // "FLEET OS" badge
+      ctx.fillStyle = '#00f2fe';
+      ctx.font = 'bold 16px "JetBrains Mono", monospace';
+      ctx.fillText('FLEET MOBILITY OS', cx, cy + 70);
+
+      // Top badge
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px "JetBrains Mono", monospace';
+      ctx.fillText('SCOOTER & BIKE SAAS', cx, cy - 80);
+    } else if (currentSkin.decal === 'racing_stripes') {
+      // Dual high-speed racing stripes
+      ctx.fillStyle = currentSkin.accentColor;
+      ctx.fillRect(cx - 40, 20, 32, h - 40);
+      ctx.fillRect(cx + 8, 20, 32, h - 40);
+
+      // Pinstripes
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 46, 20, 4, h - 40);
+      ctx.fillRect(cx + 42, 20, 4, h - 40);
+
+      // Racing roundel #01
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy + 40, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#111827';
+      ctx.font = '900 54px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('01', cx, cy + 42);
+    } else if (currentSkin.decal === 'cyber_circuit') {
+      // High-tech circuit traces
+      ctx.strokeStyle = currentSkin.accentColor;
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Concentric angular tracks
+      ctx.beginPath();
+      ctx.arc(cx, cy, 180, 0, Math.PI * 1.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 140, Math.PI * 0.5, Math.PI * 2);
+      ctx.stroke();
+
+      // Nodes & IC CPU
+      ctx.fillStyle = currentSkin.accentColor;
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * 160, cy + Math.sin(a) * 160, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillRect(cx - 36, cy + 10, 72, 72);
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 16px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('CORE', cx, cy + 50);
+    } else if (currentSkin.decal === 'clean_wave') {
+      // Clean wave ripples
+      ctx.strokeStyle = currentSkin.accentColor;
+      ctx.lineWidth = 6;
+      for (let r = 70; r <= 220; r += 32) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (currentSkin.decal === 'polka_dots') {
+      // Retro pop dots
+      ctx.fillStyle = currentSkin.accentColor;
+      for (let x = 80; x < w - 60; x += 55) {
+        for (let y = 80; y < h - 60; y += 55) {
+          const dist = Math.hypot(x - cx, y - cy);
+          if (dist < 210) {
+            ctx.beginPath();
+            ctx.arc(x, y, 12, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    return canvas;
+  }
+
+  // Decal mesh on top of the Roomba chassis
+  const decalCanvas = createDecalCanvas(skin);
+  const decalTexture = new THREE.CanvasTexture(decalCanvas);
+  decalTexture.colorSpace = THREE.SRGBColorSpace;
+  const decalGeo = new THREE.CircleGeometry(chassisRadius * 0.86, 48);
+  decalGeo.rotateX(-Math.PI / 2);
+  const decalMat = new THREE.MeshStandardMaterial({
+    map: decalTexture,
+    roughness: skin.finish === 'glossy' ? 0.2 : 0.5,
+    metalness: skin.finish === 'metallic' ? 0.6 : 0.1,
+  });
+  const decalMesh = new THREE.Mesh(decalGeo, decalMat);
+  decalMesh.position.y = height / 2 + 0.004;
+  chassis.add(decalMesh);
+
   // 3. Central Power & Clean Button Disc
   const buttonMat = new THREE.MeshStandardMaterial({
     color: 0x1f2937,
     roughness: 0.25,
     metalness: 0.6,
   });
-  const buttonGeo = new THREE.CylinderGeometry(chassisRadius * 0.32, chassisRadius * 0.32, 0.015, 32);
+  const buttonGeo = new THREE.CylinderGeometry(chassisRadius * 0.28, chassisRadius * 0.28, 0.015, 32);
   const button = new THREE.Mesh(buttonGeo, buttonMat);
   button.position.y = height / 2 + 0.008;
   chassis.add(button);
@@ -92,7 +291,7 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
     emissiveIntensity: 0.85,
     roughness: 0.2,
   });
-  const ledGeo = new THREE.TorusGeometry(chassisRadius * 0.33, 0.012, 16, 32);
+  const ledGeo = new THREE.TorusGeometry(chassisRadius * 0.29, 0.012, 16, 32);
   ledGeo.rotateX(Math.PI / 2);
   const ledHalo = new THREE.Mesh(ledGeo, ledMat);
   ledHalo.position.y = height / 2 + 0.012;
@@ -343,6 +542,63 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
         horn.rotation.z = side * -0.65;
         topperGroup.add(horn);
       }
+    } else if (type === 'joyride_scooter') {
+      // Official Joyride Mini Fleet Electric Scooter Topper!
+      const deckMat = new THREE.MeshStandardMaterial({ color: 0x0052ff, roughness: 0.2, metalness: 0.4 }); // Joyride royal blue
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.85 });
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0x00f2fe, roughness: 0.25, metalness: 0.7 }); // Joyride neon cyan
+      const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+      // Scooter Deck
+      const deckGeo = new THREE.BoxGeometry(0.11, 0.02, 0.38);
+      const deck = new THREE.Mesh(deckGeo, deckMat);
+      deck.position.set(0, 0.04, 0);
+      topperGroup.add(deck);
+
+      // Grip tape stripe
+      const gripGeo = new THREE.PlaneGeometry(0.07, 0.32);
+      gripGeo.rotateX(-Math.PI / 2);
+      const grip = new THREE.Mesh(gripGeo, new THREE.MeshBasicMaterial({ color: 0x00f2fe }));
+      grip.position.set(0, 0.052, 0);
+      topperGroup.add(grip);
+
+      // Wheels
+      const wGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.02, 16);
+      wGeo.rotateZ(Math.PI / 2);
+      const wheelFront = new THREE.Mesh(wGeo, tireMat);
+      wheelFront.position.set(0, 0.035, 0.17);
+      topperGroup.add(wheelFront);
+
+      const wheelRear = new THREE.Mesh(wGeo, tireMat);
+      wheelRear.position.set(0, 0.035, -0.17);
+      topperGroup.add(wheelRear);
+
+      // Steering Stem Column
+      const stemGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.28, 12);
+      const stem = new THREE.Mesh(stemGeo, metalMat);
+      stem.position.set(0, 0.17, 0.15);
+      stem.rotation.x = -0.15;
+      topperGroup.add(stem);
+
+      // Handlebars T-bar
+      const barGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.22, 12);
+      barGeo.rotateZ(Math.PI / 2);
+      const bar = new THREE.Mesh(barGeo, metalMat);
+      bar.position.set(0, 0.30, 0.13);
+      topperGroup.add(bar);
+
+      // Rubber hand grips
+      for (const gx of [-0.09, 0.09]) {
+        const gripCap = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.04, 8), tireMat);
+        gripCap.rotation.z = Math.PI / 2;
+        gripCap.position.set(gx, 0.30, 0.13);
+        topperGroup.add(gripCap);
+      }
+
+      // Front Headlight LED
+      const headLight = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 8), lightMat);
+      headLight.position.set(0, 0.28, 0.155);
+      topperGroup.add(headLight);
     }
   }
 
@@ -398,6 +654,15 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
     ledMat.emissive.set(newSkin.primaryColor);
     underglowMat.color.set(newSkin.underglowColor);
     buildTopper(newSkin.topper);
+
+    // Update decal canvas texture
+    const newCanvas = createDecalCanvas(newSkin);
+    const newTex = new THREE.CanvasTexture(newCanvas);
+    newTex.colorSpace = THREE.SRGBColorSpace;
+    decalMat.map = newTex;
+    decalMat.roughness = newSkin.finish === 'glossy' ? 0.2 : 0.5;
+    decalMat.metalness = newSkin.finish === 'metallic' ? 0.6 : 0.1;
+    decalMat.needsUpdate = true;
   }
 
   return {

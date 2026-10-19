@@ -8,9 +8,11 @@ export type GameState = 'title' | 'customizing' | 'countdown' | 'playing' | 'pau
 
 export type FinishType = 'matte' | 'glossy' | 'metallic' | 'carbon';
 
-export type DecalType = 'plain' | 'racing_stripes' | 'cyber_circuit' | 'polka_dots' | 'clean_wave';
+export type DecalType = 'plain' | 'racing_stripes' | 'cyber_circuit' | 'polka_dots' | 'clean_wave' | 'joyride_fleet';
 
-export type TopperType = 'none' | 'cat_ears' | 'crown' | 'spoiler' | 'party_hat' | 'rubber_duck' | 'viking_horns';
+export type TopperType = 'none' | 'cat_ears' | 'crown' | 'spoiler' | 'party_hat' | 'rubber_duck' | 'viking_horns' | 'joyride_scooter';
+
+export type SponsorType = 'joyride' | 'proclean' | 'none';
 
 export type BotDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -21,6 +23,7 @@ export interface RobotSkinConfig {
   decal: DecalType;
   topper: TopperType;
   underglowColor: string;
+  sponsor?: SponsorType;
 }
 
 export interface RobotProfile {
@@ -51,6 +54,7 @@ export interface RobotLiveState {
   bumpsReceived: number;
   spinoutTimer: number;
   spinoutCooldown: number;
+  isDogGrabbed?: boolean;
 }
 
 export interface DustPickup {

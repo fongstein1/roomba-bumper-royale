@@ -73,29 +73,42 @@ export class FloorTextureManager {
     const w = this.baseCanvas.width;
     const h = this.baseCanvas.height;
 
-    // 1. Natural warm oak hardwood base for living area
-    ctx.fillStyle = '#b88a58';
+    // 1. Natural warm oak hardwood base with detailed procedural grain
+    ctx.fillStyle = '#b3824f';
     ctx.fillRect(0, 0, w, h);
 
     // Plank lines & grain
     const plankHeight = 32;
-    ctx.lineWidth = 1.5;
     for (let y = 0; y < h; y += plankHeight) {
-      // Wood tone variation
-      const shade = 175 + Math.floor(Math.sin(y * 0.05) * 18);
-      ctx.fillStyle = `rgb(${shade + 8}, ${shade - 30}, ${shade - 75})`;
+      // Wood tone variation per plank
+      const shade = 170 + Math.floor(Math.sin(y * 0.08) * 16 + Math.cos(y * 0.03) * 12);
+      ctx.fillStyle = `rgb(${shade + 12}, ${shade - 28}, ${shade - 72})`;
       ctx.fillRect(0, y, w, plankHeight);
 
+      // Fine grain streaks within plank
+      ctx.strokeStyle = `rgba(${shade - 40}, ${shade - 65}, ${shade - 100}, 0.22)`;
+      ctx.lineWidth = 1;
+      for (let g = 0; g < 4; g++) {
+        const gy = y + 5 + g * 7;
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.bezierCurveTo(w * 0.3, gy + Math.sin(y) * 4, w * 0.7, gy - Math.sin(y) * 4, w, gy);
+        ctx.stroke();
+      }
+
       // Plank horizontal seam
-      ctx.strokeStyle = 'rgba(70, 40, 15, 0.45)';
+      ctx.strokeStyle = 'rgba(60, 35, 12, 0.55)';
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(w, y);
       ctx.stroke();
 
-      // Random vertical butt joints
-      const plankLength = 120 + ((y * 37) % 80);
-      for (let x = (y * 23) % plankLength; x < w; x += plankLength) {
+      // Random vertical butt joints with bevel shading
+      const plankLength = 110 + ((y * 43) % 90);
+      for (let x = (y * 29) % plankLength; x < w; x += plankLength) {
+        ctx.strokeStyle = 'rgba(50, 30, 10, 0.5)';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
         ctx.moveTo(x, y);
         ctx.lineTo(x, y + plankHeight);
@@ -103,18 +116,29 @@ export class FloorTextureManager {
       }
     }
 
-    // 2. Kitchen Zone (Modern Terrazzo / Slate Tiles in top-right: x: 50% to 100%, y: 0% to 50%)
+    // 2. Kitchen Zone (Modern Terrazzo / Carrara Marble in top-right: x: 48% to 100%, y: 0% to 48%)
     const kitchenX = w * 0.48;
     const kitchenY = 0;
     const kitchenW = w * 0.52;
     const kitchenH = h * 0.48;
 
-    ctx.fillStyle = '#cfc9be';
+    ctx.fillStyle = '#eae5dc';
     ctx.fillRect(kitchenX, kitchenY, kitchenW, kitchenH);
 
-    // Large ceramic tiles with subtle grout
+    // Marble veins
+    ctx.strokeStyle = 'rgba(160, 150, 140, 0.35)';
+    ctx.lineWidth = 2.5;
+    for (let i = 0; i < 6; i++) {
+      ctx.beginPath();
+      const startX = kitchenX + i * 90;
+      ctx.moveTo(startX, 0);
+      ctx.bezierCurveTo(startX + 40, kitchenH * 0.3, startX - 30, kitchenH * 0.7, startX + 50, kitchenH);
+      ctx.stroke();
+    }
+
+    // Large ceramic tiles with recessed grout
     const tileSize = 64;
-    ctx.strokeStyle = 'rgba(100, 95, 90, 0.35)';
+    ctx.strokeStyle = 'rgba(115, 108, 100, 0.4)';
     ctx.lineWidth = 2;
     for (let x = kitchenX; x <= w; x += tileSize) {
       ctx.beginPath();
@@ -129,8 +153,8 @@ export class FloorTextureManager {
       ctx.stroke();
     }
 
-    // Divider threshold between kitchen and living room
-    ctx.strokeStyle = '#5a3d28';
+    // Brass transition threshold between kitchen and living room
+    ctx.strokeStyle = '#d4af37';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(kitchenX, 0);
@@ -138,27 +162,156 @@ export class FloorTextureManager {
     ctx.lineTo(w, kitchenH);
     ctx.stroke();
 
-    // 3. Luxury Area Rug (Center-Left Lounge: x: 14% to 48%, y: 48% to 84%)
+    // 3. Luxury Area Rug (Center-Left Lounge: x: 12% to 52%, y: 46% to 88%)
     const rugX = w * 0.12;
     const rugY = h * 0.46;
     const rugW = w * 0.40;
     const rugH = h * 0.42;
 
-    // Rug base (deep stylish indigo with woven fringe)
-    ctx.fillStyle = '#26344d';
+    // Rug base (deep stylish indigo with woven cross-hatch texture)
+    ctx.fillStyle = '#223048';
     ctx.fillRect(rugX, rugY, rugW, rugH);
 
-    // Rug geometric border
+    // Cross-weave pattern
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let rx = rugX; rx < rugX + rugW; rx += 6) {
+      ctx.beginPath();
+      ctx.moveTo(rx, rugY);
+      ctx.lineTo(rx, rugY + rugH);
+      ctx.stroke();
+    }
+    for (let ry = rugY; ry < rugY + rugH; ry += 6) {
+      ctx.beginPath();
+      ctx.moveTo(rugX, ry);
+      ctx.lineTo(rugX + rugW, ry);
+      ctx.stroke();
+    }
+
+    // Rug golden borders
     ctx.strokeStyle = '#dfc495';
     ctx.lineWidth = 4;
     ctx.strokeRect(rugX + 8, rugY + 8, rugW - 16, rugH - 16);
     ctx.strokeRect(rugX + 16, rugY + 16, rugW - 32, rugH - 32);
 
-    // Subtle texture noise across entire floor
+    // 4. OFFICIAL SPONSORSHIP FLOOR DECAL: "JOYRIDE" (Micromobility Fleet OS)
+    // Painted center-court in the foyer/living space (x: 520, y: 310)
+    const sponsorX = w * 0.28;
+    const sponsorY = h * 0.24;
+    const sponsorW = 320;
+    const sponsorH = 100;
+
+    ctx.save();
+    // Rounded racetrack backdrop
+    ctx.fillStyle = 'rgba(0, 82, 255, 0.88)'; // Joyride Royal Electric Blue
+    ctx.beginPath();
+    ctx.roundRect(sponsorX - sponsorW / 2, sponsorY - sponsorH / 2, sponsorW, sponsorH, 20);
+    ctx.fill();
+
+    // Neon cyan rim
+    ctx.strokeStyle = '#00f2fe';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Inner subtle glow border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(sponsorX - sponsorW / 2 + 5, sponsorY - sponsorH / 2 + 5, sponsorW - 10, sponsorH - 10);
+
+    // Scooter icon (procedural canvas lines)
+    ctx.fillStyle = '#00f2fe';
+    ctx.strokeStyle = '#00f2fe';
+    ctx.lineWidth = 2.5;
+    const scX = sponsorX - 105;
+    const scY = sponsorY - 2;
+    // Wheels
+    ctx.beginPath();
+    ctx.arc(scX - 18, scY + 14, 6, 0, Math.PI * 2);
+    ctx.arc(scX + 18, scY + 14, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    // Deck & Stem
+    ctx.beginPath();
+    ctx.moveTo(scX - 18, scY + 14);
+    ctx.lineTo(scX + 18, scY + 14);
+    ctx.lineTo(scX + 14, scY - 14);
+    ctx.lineTo(scX + 6, scY - 14); // handlebar
+    ctx.stroke();
+
+    // "JOYRIDE" brand text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('JOYRIDE', sponsorX - 65, sponsorY - 10);
+
+    // Subtitle: "MICROMOBILITY FLEET PLATFORM"
+    ctx.fillStyle = '#00f2fe';
+    ctx.font = 'bold 11px "JetBrains Mono", monospace';
+    ctx.letterSpacing = '1px';
+    ctx.fillText('SHARED SCOOTER & BIKE FLEETS', sponsorX - 65, sponsorY + 18);
+    ctx.restore();
+
+    // 5. OFFICIAL SPONSORSHIP FLOOR GRAPHIC #2: JOYRIDE FLEET MOBILITY HUB / DOCKING STATION
+    // Located along the lower-right threshold (x: 65% to 95%, y: 72% to 92%)
+    const hubX = w * 0.72;
+    const hubY = h * 0.76;
+    const hubW = 260;
+    const hubH = 140;
+
+    ctx.save();
+    // Industrial tech bay plate
+    ctx.fillStyle = 'rgba(11, 19, 43, 0.85)';
+    ctx.strokeStyle = '#00f2fe';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(hubX - hubW / 2, hubY - hubH / 2, hubW, hubH, 12);
+    ctx.fill();
+    ctx.stroke();
+
+    // Diagonal cyan hazard stripes along top and bottom
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.6)';
+    ctx.lineWidth = 2;
+    for (let sx = hubX - hubW / 2 + 10; sx < hubX + hubW / 2; sx += 18) {
+      ctx.beginPath();
+      ctx.moveTo(sx, hubY - hubH / 2 + 3);
+      ctx.lineTo(sx + 10, hubY - hubH / 2 + 16);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(sx, hubY + hubH / 2 - 16);
+      ctx.lineTo(sx + 10, hubY + hubH / 2 - 3);
+      ctx.stroke();
+    }
+
+    // Hub Header Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '900 16px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('JOYRIDE FLEET HUB', hubX, hubY - 26);
+
+    ctx.fillStyle = '#00f2fe';
+    ctx.font = 'bold 10px "JetBrains Mono", monospace';
+    ctx.fillText('DEDICATED E-SCOOTER PARKING', hubX, hubY - 8);
+
+    // 3 Mini Parking Bays for scooters
+    for (let i = -1; i <= 1; i++) {
+      const bx = hubX + i * 72;
+      const by = hubY + 28;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx - 26, by - 18, 52, 36);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.fillText(`BAY 0${i + 2}`, bx, by + 4);
+    }
+    ctx.restore();
+
+    // 6. Subtle micro-grain noise across entire floor
     const imgData = ctx.getImageData(0, 0, w, h);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const n = (Math.random() - 0.5) * 16;
+      const n = (Math.random() - 0.5) * 14;
       d[i] = Math.max(0, Math.min(255, d[i] + n));
       d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + n));
       d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + n));

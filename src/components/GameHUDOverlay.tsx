@@ -206,6 +206,20 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
         </div>
       </div>
 
+      {/* DOG GRAB ALERT NOTIFICATION */}
+      {p1State?.isDogGrabbed && (
+        <div className="mx-auto my-auto bg-amber-500/95 text-neutral-950 px-6 py-2.5 rounded-full font-black text-xs sm:text-sm tracking-wide shadow-2xl flex items-center gap-2.5 animate-bounce border-2 border-white pointer-events-none">
+          <span className="text-xl">🐕</span>
+          <span>THE DOG GRABBED YOU! CARRYING TO THE CORNER BED!</span>
+        </div>
+      )}
+      {p2State?.isDogGrabbed && (
+        <div className="mx-auto my-auto bg-amber-500/95 text-neutral-950 px-6 py-2.5 rounded-full font-black text-xs sm:text-sm tracking-wide shadow-2xl flex items-center gap-2.5 animate-bounce border-2 border-white pointer-events-none">
+          <span className="text-xl">🐕</span>
+          <span>PLAYER 2 GRABBED BY THE DOG! CARRYING TO THE CORNER!</span>
+        </div>
+      )}
+
       {/* BOTTOM CLUSTERS & ON-SCREEN TOUCH/CLICK CONTROLS */}
       <div className="w-full flex items-end justify-between pointer-events-none mt-auto">
         {/* ================= PLAYER 1 ZONE (SOLO OR SPLIT-SCREEN LEFT) ================= */}

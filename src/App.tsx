@@ -16,16 +16,17 @@ import { soundSynth } from './audio/SoundSynth';
 const DEFAULT_PROFILES: RobotProfile[] = [
   {
     id: 'p1',
-    name: 'DustBuster 9000',
+    name: 'Joyride Fleet Pro',
     isHuman: true,
     playerIndex: 1,
     skin: {
-      primaryColor: '#0ea5e9',
-      accentColor: '#38bdf8',
+      primaryColor: '#0052ff', // Joyride Royal Electric Blue
+      accentColor: '#00f2fe',  // Joyride Neon Cyan
       finish: 'glossy',
-      decal: 'racing_stripes',
-      topper: 'cat_ears',
-      underglowColor: '#0284c7',
+      decal: 'joyride_fleet',
+      topper: 'joyride_scooter',
+      underglowColor: '#0052ff',
+      sponsor: 'joyride',
     },
   },
   {

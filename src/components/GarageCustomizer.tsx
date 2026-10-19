@@ -5,7 +5,7 @@
  */
 import React, { useState } from 'react';
 import { RobotProfile, TopperType, FinishType } from '../types/game';
-import { ArrowLeft, Play, Sparkles, Crown, Shield, Smile, Eye } from 'lucide-react';
+import { ArrowLeft, Play, Sparkles, Crown, Shield, Smile, Eye, Zap } from 'lucide-react';
 import { soundSynth } from '../audio/SoundSynth';
 
 interface GarageCustomizerProps {
@@ -18,6 +18,7 @@ interface GarageCustomizerProps {
 }
 
 const COLOR_PRESETS = [
+  { name: 'Joyride Fleet (Sponsor)', primary: '#0052ff', accent: '#00f2fe', underglow: '#0052ff' },
   { name: 'Electric Teal', primary: '#0ea5e9', accent: '#38bdf8', underglow: '#0284c7' },
   { name: 'Blaze Coral', primary: '#f97316', accent: '#fb923c', underglow: '#ea580c' },
   { name: 'Emerald Tech', primary: '#10b981', accent: '#34d399', underglow: '#059669' },
@@ -25,11 +26,11 @@ const COLOR_PRESETS = [
   { name: 'Golden Luxe', primary: '#f59e0b', accent: '#fde047', underglow: '#d97706' },
   { name: 'Stealth Obsidian', primary: '#18181b', accent: '#71717a', underglow: '#3f3f46' },
   { name: 'Arctic Ceramic', primary: '#f8fafc', accent: '#cbd5e1', underglow: '#94a3b8' },
-  { name: 'Rose Metallic', primary: '#fb7185', accent: '#fda4af', underglow: '#e11d48' },
 ];
 
 const TOPPERS: { type: TopperType; label: string; icon: React.ReactNode }[] = [
   { type: 'none', label: 'Bare Dome', icon: <Eye className="w-4 h-4" /> },
+  { type: 'joyride_scooter', label: 'Joyride e-Scooter', icon: <Zap className="w-4 h-4 text-cyan-400" /> },
   { type: 'cat_ears', label: 'Cat Ears', icon: <Sparkles className="w-4 h-4" /> },
   { type: 'crown', label: 'Royal Crown', icon: <Crown className="w-4 h-4" /> },
   { type: 'spoiler', label: 'Turbo Spoiler', icon: <Shield className="w-4 h-4" /> },
@@ -156,6 +157,33 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
               maxLength={20}
             />
 
+            {/* Official Joyride Fleet Quick Livery */}
+            <div className="mb-4">
+              <button
+                onClick={() => {
+                  updateCurrentSkin({
+                    primaryColor: '#0052ff',
+                    accentColor: '#00f2fe',
+                    finish: 'glossy',
+                    decal: 'joyride_fleet',
+                    topper: 'joyride_scooter',
+                    underglowColor: '#0052ff',
+                    sponsor: 'joyride',
+                  });
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-700/80 to-cyan-600/80 border border-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 hover:brightness-110 transition-all cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-cyan-200 fill-current" />
+                  <div className="text-left">
+                    <div className="text-white text-xs font-black">Official Joyride Fleet Skin</div>
+                    <div className="text-[10px] text-cyan-200 font-normal">SaaS Micromobility Livery</div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded text-white font-bold">APPLY</span>
+              </button>
+            </div>
+
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Color Schemes
             </label>
@@ -185,17 +213,43 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
             </div>
           </div>
 
-          {/* Col 2: Surface Finish & Underglow */}
+          {/* Col 2: Surface Finish, Decals & Underglow */}
           <div>
+            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
+              Chassis Decal Plate
+            </label>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {[
+                { type: 'joyride_fleet', label: 'Joyride Fleet OS' },
+                { type: 'racing_stripes', label: 'Speed Stripes #01' },
+                { type: 'cyber_circuit', label: 'Cyber Circuit' },
+                { type: 'clean_wave', label: 'Clean Wave' },
+                { type: 'polka_dots', label: 'Pop Dots' },
+                { type: 'plain', label: 'Minimalist' },
+              ].map((d) => (
+                <button
+                  key={d.type}
+                  onClick={() => updateCurrentSkin({ decal: d.type as any })}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer text-left truncate ${
+                    currentProfile.skin.decal === d.type
+                      ? 'border-cyan-400 bg-cyan-950/40 text-cyan-200'
+                      : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Chassis Material Finish
             </label>
-            <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 mb-3">
               {FINISHES.map((f) => (
                 <button
                   key={f.type}
                   onClick={() => updateCurrentSkin({ finish: f.type })}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium border transition-colors cursor-pointer text-left ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer text-left ${
                     currentProfile.skin.finish === f.type
                       ? 'border-cyan-400 bg-cyan-950/40 text-cyan-200'
                       : 'border-neutral-800 bg-neutral-950/60 text-neutral-400 hover:text-white'
@@ -227,7 +281,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Mount 3D Topper
             </label>
-            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
               {TOPPERS.map((top) => (
                 <button
                   key={top.type}

@@ -1,0 +1,6 @@
+{
+  "name": "Roomba Bumper Royale - 3D Vacuum Battle",
+  "description": "Race customizable robot vacuums, bump rivals, and clean the most floor in an open-concept 3D designer penthouse with local multiplayer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

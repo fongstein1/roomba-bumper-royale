@@ -126,3 +126,13 @@ test('a complete 90-second simulated match ends once, publishes results, and rem
     assert.ok(e.matchTimeRemaining > 89); e.stopMatch();
   } finally { soundSynth.ensureContext = original; }
 });
+
+test('turbo actually increases travel speed rather than only changing the cap and camera', () => {
+  const normal = fixture(), boosted = fixture();
+  normal.setVirtualInput('p1', 'up', true);
+  boosted.setVirtualInput('p1', 'up', true); boosted.setVirtualInput('p1', 'boost', true);
+  // Keep the second robot and furniture away from the one-second straight drive.
+  normal.states.get('p2').x = -12; boosted.states.get('p2').x = -12;
+  for (let i = 0; i < 20; i++) { proto.updatePhysics.call(normal, 0.05); proto.updatePhysics.call(boosted, 0.05); }
+  assert.ok(boosted.states.get('p1').speed > normal.states.get('p1').speed * 1.5);
+});

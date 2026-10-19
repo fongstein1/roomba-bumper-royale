@@ -177,7 +177,7 @@ export class GameEngine {
     this.meshes.clear();
     this.states.clear();
 
-    const spawnRadius = 11.5;
+    const spawnRadius = 13;
     const count = this.profiles.length;
 
     this.profiles.forEach((profile, index) => {
@@ -489,8 +489,8 @@ export class GameEngine {
       const effectiveMaxSpeed = state.isBoosting ? boostMaxSpeed : standardMaxSpeed;
 
       if (!state.isStunned && Math.abs(throttle) > 0.01) {
-        state.vx += forwardX * throttle * accelRate * dt;
-        state.vz += forwardZ * throttle * accelRate * dt;
+        state.vx += forwardX * throttle * accelRate * (state.isBoosting ? 1.85 : 1) * dt;
+        state.vz += forwardZ * throttle * accelRate * (state.isBoosting ? 1.85 : 1) * dt;
       }
 
       // Drag / Friction

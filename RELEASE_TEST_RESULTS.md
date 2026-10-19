@@ -8,13 +8,14 @@ Preserved the existing Three.js penthouse, procedural vacuums and skins, chasing
 
 - Pause/resume and restart no longer create concurrent animation loops. Inputs clear on pause, stop and focus loss.
 - Rematches reset floor, pickups, hazards, dog, effects and bounty timers; fresh scores publish immediately.
+- Boost now increases acceleration as well as its speed limit, so drag no longer prevents the turbo from making the vacuum faster.
 - Spawn points avoid the existing large furniture and face inward. A collision exactly on a furniture axis now pushes out correctly. Carried vacuums do not collide with floor-level players.
 - Live leader and results share the same scoring calculation; results show total score and explain the rules.
 - Pointer capture/cancellation supports reliable held controls. Touch targets enlarged; touch controls show automatically on coarse pointers. Scrollable menus, dynamic viewport height, compact layouts and a WebGL compatibility screen added.
 - Removed unused server/AI dependencies and the incompatible direct esbuild pin. npm lockfile and Vercel test/build gate added. Removed stale Bun lockfile.
 - GPU resources are released when rebuilding vacuums and resetting pickups; default audio reduced and pre-initialization mute respected.
 
-## Automated checks
+## Automated checks — 20 passed
 
 Run in an isolated Vercel build environment with the checked npm lockfile. Production physics is exercised with lightweight renderer/arena substitutes. UI contracts use React server rendering.
 

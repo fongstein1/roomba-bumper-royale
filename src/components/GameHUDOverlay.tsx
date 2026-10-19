@@ -5,6 +5,7 @@
  * for both solo and 2-player split-screen gameplay.
  */
 import React, { useState } from 'react';
+import { totalScore } from '../game/scoring';
 import { GameMode, RobotProfile, RobotLiveState, DustPickup } from '../types/game';
 import {
   Volume2,
@@ -57,8 +58,8 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
   dogPos = null,
   highValueToast = null,
 }) => {
-  const [showControls, setShowControls] = useState<boolean>(true);
-  const [showMinimap, setShowMinimap] = useState<boolean>(true);
+  const [showControls, setShowControls] = useState<boolean>(() => window.matchMedia('(pointer: coarse)').matches);
+  const [showMinimap, setShowMinimap] = useState<boolean>(() => window.innerWidth >= 768);
 
   const p1Profile = profiles.find((p) => p.id === 'p1');
   const p2Profile = profiles.find((p) => p.id === 'p2');
@@ -70,13 +71,15 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Find current match leader
-  const sortedByClean = [...profiles].sort((a, b) => (coverage[b.id] || 0) - (coverage[a.id] || 0));
+  const scoreFor = (id: string) => totalScore({ coveragePercent: coverage[id] || 0, dustPoints: states.find(s => s.id === id)?.dustPoints || 0, bumpsGiven: states.find(s => s.id === id)?.bumpsGiven || 0 });
+  const sortedByClean = [...profiles].sort((a, b) => scoreFor(b.id) - scoreFor(a.id));
   const currentLeader = sortedByClean[0];
 
   // Helper for touch/pointer button bindings
   const bindControl = (player: 'p1' | 'p2', action: 'up' | 'down' | 'left' | 'right' | 'boost') => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
       onVirtualInput(player, action, true);
     },
     onPointerUp: (e: React.PointerEvent) => {
@@ -87,22 +90,17 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
       e.preventDefault();
       onVirtualInput(player, action, false);
     },
+    onLostPointerCapture: () => onVirtualInput(player, action, false),
     onPointerCancel: (e: React.PointerEvent) => {
       e.preventDefault();
       onVirtualInput(player, action, false);
     },
-    onTouchStart: (e: React.TouchEvent) => {
-      e.preventDefault();
-      onVirtualInput(player, action, true);
-    },
-    onTouchEnd: (e: React.TouchEvent) => {
-      e.preventDefault();
-      onVirtualInput(player, action, false);
-    },
+
   });
 
   return (
-    <div className="absolute inset-0 z-10 pointer-events-none select-none flex flex-col justify-between p-3 sm:p-5 overflow-hidden">
+    <div className={`game-hud ${gameMode} absolute inset-0 z-10 pointer-events-none select-none flex flex-col justify-between p-3 sm:p-5 overflow-hidden`}>
+      <p className="sr-only">Clean the floor and collect gems. Highest score after 90 seconds wins. Use WASD to drive and Space to boost. Player 2 uses arrows and Enter.</p>
       {/* Split-Screen Center Divider Line */}
       {gameMode === 'splitscreen' && (
         <>
@@ -137,7 +135,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             </button>
             <button
               onClick={() => setShowControls((prev) => !prev)}
-              title="Toggle On-Screen Virtual Controls"
+              aria-label="Toggle On-Screen Virtual Controls" title="Toggle On-Screen Virtual Controls"
               className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
                 showControls
                   ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
@@ -149,7 +147,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             </button>
             <button
               onClick={() => setShowMinimap((prev) => !prev)}
-              title="Toggle Arena Radar Minimap"
+              aria-label="Toggle Arena Radar Minimap" title="Toggle Arena Radar Minimap"
               className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
                 showMinimap
                   ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
@@ -173,7 +171,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
           </div>
 
           {/* High-Value spots count & Leader Tag */}
-          <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-2">
             {pickups.filter((p) => p.isHighValue && !p.collected).length > 0 && (
               <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -188,7 +186,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   {currentLeader.name}
                 </span>
                 <span className="font-mono font-bold text-cyan-400 tabular-nums">
-                  {(coverage[currentLeader.id] || 0).toFixed(0)}%
+                  {Math.round(scoreFor(currentLeader.id))} pts
                 </span>
               </div>
             )}
@@ -358,8 +356,9 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
         </div>
       )}
 
+      <div className="mt-auto text-center text-[10px] sm:text-xs text-white bg-neutral-950/70 rounded-lg px-2 py-1 self-center mb-2 pointer-events-none">W/S drive · A/D steer · Space boost · Most points wins</div>
       {/* BOTTOM CLUSTERS & ON-SCREEN TOUCH/CLICK CONTROLS */}
-      <div className="w-full flex items-end justify-between pointer-events-none mt-auto">
+      <div className="w-full flex items-end justify-between pointer-events-none">
         {/* ================= PLAYER 1 ZONE (SOLO OR SPLIT-SCREEN LEFT) ================= */}
         {p1Profile && p1State && (
           <div
@@ -405,13 +404,13 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             {showControls && (
               <div className="flex items-center justify-between gap-3 bg-neutral-950/90 border border-cyan-500/30 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md touch-none">
                 {/* 4-Way D-Pad (Left Thumb) */}
-                <div className="grid grid-cols-3 gap-1.5 w-28 h-28 sm:w-32 sm:h-32 place-items-center">
+                <div className="grid grid-cols-3 gap-1 w-36 h-24 shrink-0 place-items-center">
                   <div />
                   {/* UP / THROTTLE */}
                   <button
                     {...bindControl('p1', 'up')}
                     aria-label="Player 1 Forward"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronUp className="w-5 h-5" />
                   </button>
@@ -421,7 +420,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p1', 'left')}
                     aria-label="Player 1 Steer Left"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -430,7 +429,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p1', 'down')}
                     aria-label="Player 1 Reverse"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronDown className="w-5 h-5" />
                   </button>
@@ -439,7 +438,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p1', 'right')}
                     aria-label="Player 1 Steer Right"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-cyan-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>
@@ -523,13 +522,13 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             {showControls && (
               <div className="flex items-center justify-between gap-3 bg-neutral-950/90 border border-amber-500/30 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md touch-none">
                 {/* 4-Way D-Pad (Left Thumb) */}
-                <div className="grid grid-cols-3 gap-1.5 w-28 h-28 sm:w-32 sm:h-32 place-items-center">
+                <div className="grid grid-cols-3 gap-1 w-36 h-24 shrink-0 place-items-center">
                   <div />
                   {/* UP / THROTTLE */}
                   <button
                     {...bindControl('p2', 'up')}
                     aria-label="Player 2 Forward"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronUp className="w-5 h-5" />
                   </button>
@@ -539,7 +538,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p2', 'left')}
                     aria-label="Player 2 Steer Left"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -548,7 +547,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p2', 'down')}
                     aria-label="Player 2 Reverse"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronDown className="w-5 h-5" />
                   </button>
@@ -557,7 +556,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                   <button
                     {...bindControl('p2', 'right')}
                     aria-label="Player 2 Steer Right"
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-11 h-11 rounded-xl bg-neutral-900 border border-neutral-700/80 active:bg-amber-500 active:text-neutral-950 text-neutral-200 flex items-center justify-center font-bold shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <ChevronRight className="w-5 h-5" />
                   </button>

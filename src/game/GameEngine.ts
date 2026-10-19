@@ -5,6 +5,8 @@
  * and local split-screen dual viewports.
  */
 import * as THREE from 'three';
+import { totalScore } from './scoring';
+import { disposeObject } from './disposeObject';
 import {
   GameMode,
   RobotProfile,
@@ -42,6 +44,13 @@ export class GameEngine {
     p2: { up: false, down: false, left: false, right: false, boost: false },
   };
 
+  public clearInputs() {
+    this.keysHeld.clear();
+    Object.values(this.virtualInputs).forEach(input => {
+      Object.assign(input, { up: false, down: false, left: false, right: false, boost: false });
+    });
+  }
+
   public setVirtualInput(
     player: 'p1' | 'p2',
     action: 'up' | 'down' | 'left' | 'right' | 'boost',
@@ -66,6 +75,7 @@ export class GameEngine {
 
   // High Value Spot Spawning & Tracking
   private highValueTimer: number = 0;
+  private scoreUpdateTimer = 0;
   private lastDogStatus: string = 'patrol';
 
   // Callbacks to React UI
@@ -87,6 +97,7 @@ export class GameEngine {
   private boundBlur: () => void;
 
   constructor(container: HTMLElement, profiles: RobotProfile[], mode: GameMode = 'solo') {
+    this.loop = this.loop.bind(this);
     this.canvasContainer = container;
     this.gameMode = mode;
     this.profiles = profiles;
@@ -128,6 +139,7 @@ export class GameEngine {
 
     // Bind event handlers
     this.boundKeyDown = (e: KeyboardEvent) => {
+      if (!this.isRunning || this.isPaused || (e.target instanceof HTMLElement && e.target.matches('input, textarea, select'))) return;
       // Prevent browser default scrolling on arrow keys and space
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
         e.preventDefault();
@@ -138,7 +150,7 @@ export class GameEngine {
       this.keysHeld.delete(e.code);
     };
     this.boundBlur = () => {
-      this.keysHeld.clear();
+      this.clearInputs();
       soundSynth.stopEngineHum();
     };
     this.boundResize = () => {
@@ -161,11 +173,11 @@ export class GameEngine {
 
   public initRobots() {
     // Clear existing
-    this.meshes.forEach((m) => this.arena.scene.remove(m.group));
+    this.meshes.forEach((m) => { this.arena.scene.remove(m.group); disposeObject(m.group); });
     this.meshes.clear();
     this.states.clear();
 
-    const spawnRadius = 8.5;
+    const spawnRadius = 13;
     const count = this.profiles.length;
 
     this.profiles.forEach((profile, index) => {
@@ -182,7 +194,7 @@ export class GameEngine {
         z: sz,
         vx: 0,
         vz: 0,
-        heading: angle + Math.PI, // face toward arena center
+        heading: Math.atan2(-sx, -sz), // face toward arena center
         speed: 0,
         angularVelocity: 0,
         boost: 100,
@@ -218,6 +230,13 @@ export class GameEngine {
   }
 
   public startMatch(durationSeconds: number = 90) {
+    this.stopMatch();
+    this.arena.resetMatch();
+    this.highValueTimer = 0;
+    this.scoreUpdateTimer = 0;
+    this.hitstopDuration = 0;
+    this.cameraShake = 0;
+    this.lastDogStatus = 'patrol';
     this.matchTimeRemaining = durationSeconds;
     this.matchTotalTime = durationSeconds;
     this.floorManager.resetDust();
@@ -225,16 +244,23 @@ export class GameEngine {
     this.isRunning = true;
     this.isPaused = false;
     this.lastTime = performance.now();
+    this.calculateMatchScores();
+    this.onTimeUpdate?.(durationSeconds);
     soundSynth.ensureContext();
     this.loop();
   }
 
   public pauseMatch() {
+    if (!this.isRunning || this.isPaused) return;
     this.isPaused = true;
+    this.clearInputs();
+    if (this.animationFrameId !== null) cancelAnimationFrame(this.animationFrameId);
+    this.animationFrameId = null;
     soundSynth.stopEngineHum();
   }
 
   public resumeMatch() {
+    if (!this.isRunning || !this.isPaused) return;
     this.isPaused = false;
     this.lastTime = performance.now();
     soundSynth.ensureContext();
@@ -243,6 +269,7 @@ export class GameEngine {
 
   public stopMatch() {
     this.isRunning = false;
+    this.clearInputs();
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
@@ -250,7 +277,7 @@ export class GameEngine {
     soundSynth.stopEngineHum();
   }
 
-  private loop = () => {
+  private loop() {
     if (!this.isRunning) return;
 
     this.animationFrameId = requestAnimationFrame(this.loop);
@@ -356,10 +383,12 @@ export class GameEngine {
     this.render();
 
     // Coverage & Leaderboard Calculation (throttled every ~100ms)
-    if (Math.random() < 0.1) {
+    this.scoreUpdateTimer += dt;
+    if (this.scoreUpdateTimer >= 0.1) {
+      this.scoreUpdateTimer = 0;
       this.calculateMatchScores();
     }
-  };
+  }
 
   private updatePhysics(dt: number) {
     const arenaBound = 14.3; // Half arena size minus Roomba radius
@@ -460,8 +489,8 @@ export class GameEngine {
       const effectiveMaxSpeed = state.isBoosting ? boostMaxSpeed : standardMaxSpeed;
 
       if (!state.isStunned && Math.abs(throttle) > 0.01) {
-        state.vx += forwardX * throttle * accelRate * dt;
-        state.vz += forwardZ * throttle * accelRate * dt;
+        state.vx += forwardX * throttle * accelRate * (state.isBoosting ? 1.85 : 1) * dt;
+        state.vz += forwardZ * throttle * accelRate * (state.isBoosting ? 1.85 : 1) * dt;
       }
 
       // Drag / Friction
@@ -508,10 +537,10 @@ export class GameEngine {
           const overlapZ = halfD - Math.abs(dz);
 
           if (overlapX < overlapZ) {
-            state.x = col.x + Math.sign(dx) * halfW;
+            state.x = col.x + (Math.sign(dx) || 1) * halfW;
             state.vx = -state.vx * 0.5;
           } else {
-            state.z = col.z + Math.sign(dz) * halfD;
+            state.z = col.z + (Math.sign(dz) || 1) * halfD;
             state.vz = -state.vz * 0.5;
           }
           parts.triggerBumperCompression();
@@ -607,6 +636,7 @@ export class GameEngine {
         const dist = Math.hypot(dx, dz);
         const minDist = bumperRadius * 2;
 
+        if (r1.isDogGrabbed || r2.isDogGrabbed) continue;
         if (dist < minDist && dist > 0.001) {
           // Normal vector
           const nx = dx / dist;
@@ -743,8 +773,8 @@ export class GameEngine {
   }
 
   private endMatch() {
-    this.isRunning = false;
-    soundSynth.stopEngineHum();
+    this.stopMatch();
+    this.calculateMatchScores();
     soundSynth.playVictory();
 
     const coverageData = this.floorManager.calculateCoverage();
@@ -766,8 +796,8 @@ export class GameEngine {
       })
       .sort((a, b) => {
         // Combined score: Coverage (70%) + Dust & Bump bonus
-        const scoreA = a.coveragePercent * 10 + a.dustPoints + a.bumpsGiven * 25;
-        const scoreB = b.coveragePercent * 10 + b.dustPoints + b.bumpsGiven * 25;
+        const scoreA = totalScore(a);
+        const scoreB = totalScore(b);
         return scoreB - scoreA;
       })
       .map((item, index) => ({
@@ -930,6 +960,8 @@ export class GameEngine {
     if (this.renderer.domElement && this.renderer.domElement.parentNode) {
       this.renderer.domElement.parentNode.removeChild(this.renderer.domElement);
     }
+    disposeObject(this.arena.scene);
+    this.arena.scene.environment?.dispose();
     this.floorManager.dispose();
     this.renderer.dispose();
   }

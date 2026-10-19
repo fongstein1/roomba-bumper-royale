@@ -4,6 +4,7 @@
  * and rematch / garage controls.
  */
 import React, { useEffect } from 'react';
+import { totalScore } from '../game/scoring';
 import confetti from 'canvas-confetti';
 import { MatchStats } from '../types/game';
 import { Trophy, RotateCcw, Palette, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
@@ -50,7 +51,7 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
   const winner = stats.leaderboard[0];
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md select-none animate-fadeIn">
+    <div className="results-screen absolute inset-0 z-30 flex items-center justify-center p-4 overflow-y-auto bg-neutral-950/80 backdrop-blur-md select-none animate-fadeIn">
       <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col items-center text-center">
         {/* Trophy Hero Icon */}
         <div className="w-18 h-18 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-xl mb-4">
@@ -64,7 +65,7 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
           {winner ? `${winner.name} Triumphs!` : 'Round Complete!'}
         </h1>
         <p className="text-sm text-neutral-400 max-w-md mb-6">
-          Total Floor Cleansed: <span className="font-mono font-bold text-cyan-400">{stats.totalDirtCleanedPercent}%</span> across the designer penthouse.
+          Score = coverage × 10 + dust points + bumps × 25. Floor cleaned: <span className="font-mono font-bold text-cyan-400">{stats.totalDirtCleanedPercent.toFixed(1)}%</span> across the designer penthouse.
         </p>
 
         {/* Leaderboard Table */}
@@ -74,7 +75,7 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
             <span className="col-span-4 text-left">Vacuum</span>
             <span className="col-span-2 text-right">Coverage</span>
             <span className="col-span-2 text-right">Dust Pts</span>
-            <span className="col-span-2 text-right">Bumps</span>
+            <span className="col-span-2 text-right">Score</span>
           </div>
 
           <div className="divide-y divide-neutral-800/60">
@@ -115,7 +116,7 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
                   </div>
 
                   <div className="col-span-2 text-right font-mono text-neutral-400 tabular-nums">
-                    {robot.bumpsGiven}
+                    {Math.round(totalScore(robot))}
                   </div>
                 </div>
               );

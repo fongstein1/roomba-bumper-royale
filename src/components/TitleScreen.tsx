@@ -22,7 +22,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onToggleMute,
 }) => {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-between p-6 md:p-12 pointer-events-none select-none">
+    <div className="title-screen absolute inset-0 z-20 flex flex-col justify-between gap-4 p-5 md:p-10 overflow-y-auto bg-neutral-950/65 pointer-events-none select-none">
       {/* Top Bar with brand mark & mute toggle */}
       <div className="flex items-center justify-between w-full pointer-events-auto">
         <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       {/* Hero Center Lockup with Title */}
       <div className="flex flex-col items-center justify-center max-w-2xl mx-auto text-center pointer-events-auto mt-4">
         {/* Animated Custom Roomba Icon */}
-        <div className="relative mb-6">
+        <div className="title-emblem relative mb-6">
           <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 p-1 shadow-2xl shadow-cyan-500/25 animate-pulse">
             <div className="w-full h-full rounded-full bg-neutral-950 flex items-center justify-center relative overflow-hidden border border-cyan-400/40">
               {/* Lidar scanner beam */}
@@ -68,9 +68,10 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         </h1>
 
         <p className="text-base sm:text-lg text-neutral-400 max-w-lg mb-8 leading-relaxed">
-          Race high-performance robotic vacuums, ram rivals with spring bumpers, and sweep up the most floor across the designer penthouse!
+          90 seconds. Four vacuums. One messy penthouse. Clean the floor, grab sparkling gems, and bump your way to the highest score!
         </p>
 
+        <p className="text-xs text-cyan-200 mb-4">Clean 1% = 10 points · Gems = bonus points · Big bumps = 25 points<br />W/S forward & reverse · A/D steer · Hold Space to boost<br />On a phone? Use the touch arrows. Hold forward and steer together.</p>
         {/* Primary Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-md">
           <button
@@ -92,7 +93,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             className="w-full sm:w-auto flex-1 flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-base shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <Users className="w-5 h-5" />
-            <span>2-Player Split-Screen</span>
+            <span>2 Players · Same Device</span>
           </button>
         </div>
 
@@ -116,9 +117,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         <div className="flex items-center gap-3">
           <span>Esc Pause</span>
           <span>·</span>
-          <span>PBR Penthouse Arena</span>
+          <span>Local play · No downloads</span>
           <span>·</span>
-          <span>Spring Elastic Bumpers</span>
+          <span>2 players: landscape recommended</span>
         </div>
       </div>
     </div>

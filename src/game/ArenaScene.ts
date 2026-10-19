@@ -5,6 +5,7 @@
  * and an interactive chasing dog that grabs Roombas and carries them to the corner!
  */
 import * as THREE from 'three';
+import { disposeObject } from './disposeObject';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { FurnitureCollider, DustPickup, HazardZone, PickupType } from '../types/game';
 import { FloorTextureManager } from './FloorTextureManager';
@@ -18,6 +19,7 @@ export interface DogUpdateResult {
 }
 
 export interface ArenaComponents {
+  resetMatch: () => void;
   scene: THREE.Scene;
   floorMesh: THREE.Mesh;
   colliders: FurnitureCollider[];
@@ -1011,8 +1013,7 @@ export function createDesignerPenthouse(
   function cleanHazard(id: string) {
     const m = hazardMeshes.get(id);
     if (m) {
-      scene.remove(m);
-      hazardMeshes.delete(id);
+      m.visible = false;
     }
     const h = hazards.find((hz) => hz.id === id);
     if (h) {
@@ -1233,6 +1234,8 @@ export function createDesignerPenthouse(
     return pGroup;
   }
 
+  const initialPickups = pickups.map(p => ({ ...p }));
+
   pickups.forEach((p) => {
     pickupMeshes.set(p.id, createPickupMesh(p));
   });
@@ -1241,6 +1244,7 @@ export function createDesignerPenthouse(
     const m = pickupMeshes.get(id);
     if (m) {
       scene.remove(m);
+      disposeObject(m);
       pickupMeshes.delete(id);
     }
   }
@@ -1306,6 +1310,7 @@ export function createDesignerPenthouse(
     // Pick location away from walls and dog bed
     const rx = (Math.random() - 0.5) * 20;
     const rz = (Math.random() - 0.5) * 20;
+    if (colliders.some(c => Math.abs(rx - c.x) < c.width / 2 + 1 && Math.abs(rz - c.z) < c.depth / 2 + 1)) return null;
 
     const types: PickupType[] = ['golden_dust', 'diamond_spill', 'sparkle_cache'];
     const chosenType = types[Math.floor(Math.random() * types.length)];
@@ -1386,6 +1391,8 @@ export function createDesignerPenthouse(
       sp.life -= dt;
       if (sp.life <= 0) {
         scene.remove(sp.mesh);
+        // Every particle in a burst shares geometry and material; dispose after the last.
+        if (!sparkleParticles.some(other => other !== sp && other.mesh.geometry === sp.mesh.geometry)) disposeObject(sp.mesh);
         sparkleParticles.splice(i, 1);
         continue;
       }
@@ -1399,7 +1406,23 @@ export function createDesignerPenthouse(
     }
   }
 
+  function resetMatch() {
+    [...pickupMeshes.keys()].forEach(removePickupMesh);
+    pickups.splice(0, pickups.length, ...initialPickups.map(p => ({ ...p })));
+    pickups.forEach(p => pickupMeshes.set(p.id, createPickupMesh(p)));
+    hazards.forEach(h => { h.cleaned = false; });
+    hazardMeshes.forEach(mesh => { mesh.visible = true; });
+    sparkleParticles.forEach(p => { scene.remove(p.mesh); disposeObject(p.mesh); });
+    sparkleParticles.length = 0;
+    dogX = 0; dogZ = -2; dogHeading = 0; dogStatus = 'patrol';
+    grabbedRobotId = null; cooldownTimer = 0; walkPhase = 0; barkCooldown = 0;
+    pickupAnimTime = 0;
+    dogGroup.position.set(0, 0, -2);
+    dogGroup.rotation.y = 0;
+  }
+
   return {
+    resetMatch,
     scene,
     floorMesh,
     colliders,

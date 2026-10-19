@@ -108,7 +108,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
       {/* Central 3D Viewport is unobstructed */}
 
       {/* Collapsible/Sleek Bottom Control Dock (Consolidated zero side-panel occlusion) */}
-      <div className="pointer-events-auto mx-auto w-full max-w-4xl bg-neutral-900/90 border border-neutral-700/80 rounded-2xl p-4 md:p-6 shadow-2xl backdrop-blur-md">
+      <div className="garage-dock pointer-events-auto mx-auto w-full max-w-4xl bg-neutral-900/90 border border-neutral-700/80 rounded-2xl p-4 md:p-6 shadow-2xl backdrop-blur-md">
         {/* Robot Device Selector Tabs */}
         <div className="flex items-center gap-2 border-b border-neutral-800 pb-3 mb-4 overflow-x-auto">
           {profiles.map((p) => {
@@ -150,6 +150,7 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
               Vacuum Device Name
             </label>
             <input
+              aria-label="Vacuum Device Name"
               type="text"
               value={currentProfile.name}
               onChange={(e) => updateName(e.target.value)}

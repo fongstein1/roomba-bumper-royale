@@ -75,6 +75,7 @@ export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
 
+  const [renderError, setRenderError] = useState(false);
   const [gameState, setGameState] = useState<GameState>('title');
   const [gameMode, setGameMode] = useState<GameMode>('solo');
   const [profiles, setProfiles] = useState<RobotProfile[]>(DEFAULT_PROFILES);
@@ -97,7 +98,14 @@ export default function App() {
   useEffect(() => {
     if (!mountRef.current) return;
 
-    const engine = new GameEngine(mountRef.current, profiles, gameMode);
+    let engine: GameEngine;
+    try {
+      engine = new GameEngine(mountRef.current, profiles, gameMode);
+    } catch (error) {
+      console.error('Could not initialize the game renderer', error);
+      setRenderError(true);
+      return;
+    }
     engineRef.current = engine;
 
     engine.onTimeUpdate = (remaining) => {
@@ -135,25 +143,10 @@ export default function App() {
       setGameState('gameover');
     };
 
-    // Idle title / garage turntable loop
-    let idleAnimId: number;
-    const idleLoop = () => {
-      idleAnimId = requestAnimationFrame(idleLoop);
-      turntableAngleRef.current += 0.015;
-
-      if (engineRef.current) {
-        // If in garage or title, run idle turntable
-        // Note: when match is playing, engine.loop() handles its own renders
-        // Only render idle turntable when engine is not actively in match
-      }
-    };
-    idleLoop();
-
     // Initial render
     engine.renderGarageTurntable('p1', 0);
 
     return () => {
-      cancelAnimationFrame(idleAnimId);
       engine.dispose();
       engineRef.current = null;
     };
@@ -178,6 +171,8 @@ export default function App() {
 
   // Start match
   const handleStartGame = (mode: GameMode) => {
+    setHighValueToast(null);
+    setMatchStats(null);
     setGameMode(mode);
     soundSynth.ensureContext();
     soundSynth.playCountDown(true);
@@ -240,8 +235,12 @@ export default function App() {
         }
       }
     };
+    const pauseWhenHidden = () => { if (document.hidden && gameState === 'playing') handlePause(); };
+    const pauseOnBlur = () => { if (gameState === 'playing') handlePause(); };
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    window.addEventListener('blur', pauseOnBlur);
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('blur', pauseOnBlur); document.removeEventListener('visibilitychange', pauseWhenHidden); };
   }, [gameState]);
 
   // Turntable idle animation for Garage screen
@@ -261,8 +260,10 @@ export default function App() {
     return () => cancelAnimationFrame(animId);
   }, [gameState, activeCustomizerId]);
 
+  if (renderError) return <main className="h-dvh flex flex-col items-center justify-center gap-4 p-8 text-center bg-neutral-950 text-white"><h1 className="text-2xl font-bold">This game needs WebGL 2</h1><p>Try an up-to-date browser with hardware acceleration enabled, then reload.</p><button className="bg-cyan-500 text-black px-6 py-3 rounded-xl" onClick={() => window.location.reload()}>Try again</button></main>;
+
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-neutral-950 font-sans">
+    <div className="relative w-screen h-dvh overflow-hidden bg-neutral-950 font-sans">
       {/* Three.js Isolated Canvas Mount */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full" />
 

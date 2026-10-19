@@ -13,7 +13,7 @@ html, body, #root {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 /* Custom styling for sleek game HUDs */
@@ -28,3 +28,25 @@ html, body, #root {
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
 }
+
+/* Menus scroll independently; touch driving stays fixed to the viewport. */
+.title-screen, .garage-dock, .results-screen { touch-action: pan-y; }
+.garage-dock { max-height: 64dvh; overflow-y: auto; }
+.results-screen > div { margin: auto; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible { outline: 3px solid #22d3ee; outline-offset: 3px; }
+@media (max-height: 700px) {
+  .title-emblem { display: none; }
+  .title-screen { justify-content: flex-start; }
+  .title-screen h1 { font-size: 2rem; }
+  .title-screen p { margin-bottom: .5rem; }
+  .results-screen { align-items: flex-start; }
+}
+@media (max-width: 639px) {
+  .game-hud.splitscreen > div:last-child { gap: 6px; }
+  .game-hud.splitscreen > div:last-child > div { min-width: 0; }
+  .game-hud.splitscreen .touch-none { flex-direction: column; gap: 4px; padding: 4px; }
+  .game-hud.splitscreen .touch-none button { font-size: 10px; padding: 4px; }
+}
+
+canvas, .game-hud { touch-action: none; }

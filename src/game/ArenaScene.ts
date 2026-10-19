@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { FurnitureCollider, DustPickup, HazardZone } from '../types/game';
+import { FurnitureCollider, DustPickup, HazardZone, PickupType } from '../types/game';
 import { FloorTextureManager } from './FloorTextureManager';
 import { soundSynth } from '../audio/SoundSynth';
 
@@ -31,6 +31,8 @@ export interface ArenaComponents {
   removePickupMesh: (id: string) => void;
   cleanHazard: (id: string) => void;
   spawnDroppedDust: (x: number, z: number, count: number) => void;
+  spawnHighValueCleanBurst: (x: number, z: number, color?: number) => void;
+  spawnDynamicHighValueSpot: () => DustPickup | null;
 }
 
 export function createDesignerPenthouse(
@@ -174,12 +176,12 @@ export function createDesignerPenthouse(
   const frameMesh = new THREE.Mesh(frameGeo, frameMat);
   sponsorBillboardGroup.add(frameMesh);
 
-  // Illuminated Face (Joyride Royal Blue Acrylic with soft emissive)
+  // Illuminated Face (Joyride Forest Teal Acrylic with soft emissive)
   const boardFaceGeo = new THREE.PlaneGeometry(6.3, 1.25);
   boardFaceGeo.rotateY(Math.PI); // face into the room
   const boardFaceMat = new THREE.MeshStandardMaterial({
-    color: 0x0052ff,
-    emissive: 0x003bcc,
+    color: 0x003831,
+    emissive: 0x00241f,
     emissiveIntensity: 0.6,
     roughness: 0.2,
     metalness: 0.1,
@@ -195,36 +197,43 @@ export function createDesignerPenthouse(
     emissiveIntensity: 0.45,
     roughness: 0.1,
   });
-  const cyanGlowMat = new THREE.MeshStandardMaterial({
-    color: 0x00f2fe,
-    emissive: 0x00f2fe,
+  const mintGlowMat = new THREE.MeshStandardMaterial({
+    color: 0x00f5a0,
+    emissive: 0x00f5a0,
     emissiveIntensity: 0.85,
     roughness: 0.2,
   });
 
-  // Scooter silhouette on billboard
-  const scGroup = new THREE.Group();
-  scGroup.position.set(-1.9, 0, -0.08);
-  const scWheelGeo = new THREE.TorusGeometry(0.12, 0.025, 8, 16);
-  const scW1 = new THREE.Mesh(scWheelGeo, cyanGlowMat);
-  scW1.position.set(-0.35, -0.2, 0);
-  scGroup.add(scW1);
-  const scW2 = new THREE.Mesh(scWheelGeo, cyanGlowMat);
-  scW2.position.set(0.35, -0.2, 0);
-  scGroup.add(scW2);
+  // Official Joyride Logo Pin + Gear sprocket emblem (from image.png)
+  const logoGroup = new THREE.Group();
+  logoGroup.position.set(-1.9, 0, -0.08);
 
-  // Deck & handlebar line
-  const scDeck = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.02), cyanGlowMat);
-  scDeck.position.set(0, -0.18, 0);
-  scGroup.add(scDeck);
-  const scStem = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.55, 0.02), cyanGlowMat);
-  scStem.position.set(0.32, 0.1, 0);
-  scStem.rotation.z = -0.12;
-  scGroup.add(scStem);
-  const scBar = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.03, 0.02), cyanGlowMat);
-  scBar.position.set(0.26, 0.38, 0);
-  scGroup.add(scBar);
-  sponsorBillboardGroup.add(scGroup);
+  // Teardrop pin head
+  const pinCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 24), textMat);
+  pinCyl.rotateX(Math.PI / 2);
+  logoGroup.add(pinCyl);
+
+  // Teardrop tip extending down-left
+  const tipGeo = new THREE.ConeGeometry(0.18, 0.32, 4);
+  tipGeo.rotateZ(Math.PI * 0.72);
+  const pinTip = new THREE.Mesh(tipGeo, textMat);
+  pinTip.position.set(-0.16, -0.16, 0);
+  logoGroup.add(pinTip);
+
+  // Gear sprocket in center of pin
+  const gearTorus = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 12), mintGlowMat);
+  gearTorus.position.z = -0.01;
+  logoGroup.add(gearTorus);
+
+  // Gear teeth spurs
+  for (let t = 0; t < 8; t++) {
+    const spur = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.02), mintGlowMat);
+    const a = (t * Math.PI) / 4;
+    spur.position.set(Math.cos(a) * 0.14, Math.sin(a) * 0.14, -0.01);
+    spur.rotation.z = a;
+    logoGroup.add(spur);
+  }
+  sponsorBillboardGroup.add(logoGroup);
 
   // Bold JOYRIDE blocks
   const joyridePlateGeo = new THREE.BoxGeometry(2.8, 0.45, 0.02);
@@ -234,14 +243,14 @@ export function createDesignerPenthouse(
 
   // Subtitle banner bar
   const subBarGeo = new THREE.BoxGeometry(3.6, 0.18, 0.02);
-  const subBar = new THREE.Mesh(subBarGeo, cyanGlowMat);
+  const subBar = new THREE.Mesh(subBarGeo, mintGlowMat);
   subBar.position.set(0.4, -0.22, -0.08);
   sponsorBillboardGroup.add(subBar);
 
   scene.add(sponsorBillboardGroup);
 
-  // Soft cyan/blue light wash in front of billboard
-  const boardLight = new THREE.PointLight(0x00f2fe, 1.2, 8);
+  // Soft mint/teal light wash in front of billboard
+  const boardLight = new THREE.PointLight(0x00f5a0, 1.2, 8);
   boardLight.position.set(0, 1.8, half - 1.5);
   scene.add(boardLight);
 
@@ -1011,23 +1020,186 @@ export function createDesignerPenthouse(
     }
   }
 
-  // Pickups
+  // High Value Spots & Pickups
   const pickups: DustPickup[] = [
-    { id: 'crumb_1', x: -1.5, z: 8.5, type: 'mega_crumb', value: 50, radius: 0.65, collected: false },
-    { id: 'crumb_2', x: 10.5, z: -1.5, type: 'mega_crumb', value: 50, radius: 0.65, collected: false },
-    { id: 'crumb_3', x: -9.5, z: -5.5, type: 'mega_crumb', value: 50, radius: 0.65, collected: false },
-    { id: 'batt_1', x: 0, z: 0, type: 'battery_boost', value: 100, radius: 0.65, collected: false },
+    // Standard Megas & Batteries
+    { id: 'crumb_1', x: -1.5, z: 8.5, type: 'mega_crumb', value: 40, radius: 0.65, collected: false },
+    { id: 'crumb_2', x: 10.5, z: -1.5, type: 'mega_crumb', value: 40, radius: 0.65, collected: false },
+    { id: 'crumb_3', x: -9.5, z: -5.5, type: 'mega_crumb', value: 40, radius: 0.65, collected: false },
+    { id: 'batt_1', x: 0, z: -2.5, type: 'battery_boost', value: 100, radius: 0.65, collected: false },
     { id: 'batt_2', x: -10, z: 8.5, type: 'battery_boost', value: 100, radius: 0.65, collected: false },
     { id: 'batt_3', x: 8, z: 10, type: 'battery_boost', value: 100, radius: 0.65, collected: false },
+
+    // HIGH VALUE SPOTS TO CLEAN (Big score bounties, sparkling beacons)
+    {
+      id: 'high_val_gold_center',
+      x: 0,
+      z: 2.2,
+      type: 'golden_dust',
+      value: 120,
+      radius: 0.95,
+      collected: false,
+      isHighValue: true,
+      label: '★ GOLD DUST +120',
+    },
+    {
+      id: 'high_val_diamond_kitchen',
+      x: 7.2,
+      z: -5.4,
+      type: 'diamond_spill',
+      value: 150,
+      radius: 0.95,
+      collected: false,
+      isHighValue: true,
+      label: '💎 DIAMOND SPILL +150',
+    },
+    {
+      id: 'high_val_joyride_hub',
+      x: -3.8,
+      z: 6.2,
+      type: 'sparkle_cache',
+      value: 130,
+      radius: 0.95,
+      collected: false,
+      isHighValue: true,
+      label: '⚡ JOYRIDE BOUNTY +130',
+    },
+    {
+      id: 'high_val_gold_terrace',
+      x: -8.2,
+      z: -9.8,
+      type: 'golden_dust',
+      value: 120,
+      radius: 0.95,
+      collected: false,
+      isHighValue: true,
+      label: '★ GOLD DUST +120',
+    },
   ];
 
   const pickupMeshes = new Map<string, THREE.Group>();
+
+  // Helper to create floating text badge for high-value spots
+  function createBadgeSprite(text: string, bgColor: string, textColor: string): THREE.Sprite {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d')!;
+
+    // Rounded tag background with glowing border
+    ctx.fillStyle = bgColor;
+    ctx.strokeStyle = textColor;
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 240, 80, 24);
+    ctx.fill();
+    ctx.stroke();
+
+    // Text label
+    ctx.fillStyle = textColor;
+    ctx.font = '900 24px "Plus Jakarta Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 6;
+    ctx.fillText(text, 128, 48);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(1.4, 0.55, 1.0);
+    return sprite;
+  }
 
   function createPickupMesh(pickup: DustPickup): THREE.Group {
     const pGroup = new THREE.Group();
     pGroup.position.set(pickup.x, 0.35, pickup.z);
 
-    if (pickup.type === 'mega_crumb' || pickup.type === 'dropped_dust') {
+    if (pickup.isHighValue) {
+      // ==========================================
+      // SPECTACULAR HIGH VALUE SPOT 3D MESH
+      // ==========================================
+      const isDiamond = pickup.type === 'diamond_spill';
+      const isJoyride = pickup.type === 'sparkle_cache';
+      const mainColor = isDiamond ? 0x38bdf8 : isJoyride ? 0x00f5a0 : 0xffd700;
+      const emissiveColor = isDiamond ? 0x0284c7 : isJoyride ? 0x10b981 : 0xd97706;
+
+      // 1. Multifaceted Crystal Star/Gem
+      const crystalGeo = isDiamond
+        ? new THREE.OctahedronGeometry(0.38, 0)
+        : isJoyride
+        ? new THREE.DodecahedronGeometry(0.36)
+        : new THREE.IcosahedronGeometry(0.36, 1);
+      const crystalMat = new THREE.MeshStandardMaterial({
+        color: mainColor,
+        emissive: emissiveColor,
+        emissiveIntensity: 0.85,
+        roughness: 0.08,
+        metalness: 0.95,
+      });
+      const crystalMesh = new THREE.Mesh(crystalGeo, crystalMat);
+      crystalMesh.name = 'gem';
+      crystalMesh.castShadow = true;
+      pGroup.add(crystalMesh);
+
+      // 2. Dual Concentric Orbiting Gimbal Rings
+      const ring1Geo = new THREE.TorusGeometry(0.55, 0.02, 8, 24);
+      ring1Geo.rotateX(Math.PI / 4);
+      const ringMat = new THREE.MeshBasicMaterial({ color: mainColor });
+      const ring1 = new THREE.Mesh(ring1Geo, ringMat);
+      ring1.name = 'ring1';
+      pGroup.add(ring1);
+
+      const ring2Geo = new THREE.TorusGeometry(0.66, 0.016, 8, 24);
+      ring2Geo.rotateZ(Math.PI / 4);
+      const ring2 = new THREE.Mesh(ring2Geo, ringMat);
+      ring2.name = 'ring2';
+      pGroup.add(ring2);
+
+      // 3. Vertical Holographic Light Pillar / Beacon (Reaches 3.6m into the air!)
+      const beaconGeo = new THREE.CylinderGeometry(0.28, 0.55, 3.6, 16, 1, true);
+      const beaconMat = new THREE.MeshBasicMaterial({
+        color: mainColor,
+        transparent: true,
+        opacity: 0.28,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+      });
+      const beaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+      beaconMesh.position.y = 1.45;
+      beaconMesh.name = 'beacon';
+      pGroup.add(beaconMesh);
+
+      // 4. Floating 3D Text Badge
+      const badge = createBadgeSprite(
+        pickup.label || `★ +${pickup.value}`,
+        'rgba(15, 23, 42, 0.92)',
+        isDiamond ? '#38bdf8' : isJoyride ? '#00f5a0' : '#fde047'
+      );
+      badge.position.y = 1.25;
+      badge.name = 'badge';
+      pGroup.add(badge);
+
+      // 5. Glowing Floor Target Projection Ring
+      const floorRingGeo = new THREE.RingGeometry(0.65, 0.82, 24);
+      floorRingGeo.rotateX(-Math.PI / 2);
+      const floorRingMat = new THREE.MeshBasicMaterial({
+        color: mainColor,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.65,
+      });
+      const floorRing = new THREE.Mesh(floorRingGeo, floorRingMat);
+      floorRing.position.y = -0.32;
+      floorRing.name = 'floorRing';
+      pGroup.add(floorRing);
+
+      // 6. PointLight illumination
+      const pLight = new THREE.PointLight(mainColor, 1.4, 4.5);
+      pLight.position.y = 0.5;
+      pGroup.add(pLight);
+
+    } else if (pickup.type === 'mega_crumb' || pickup.type === 'dropped_dust') {
       const crumbGeo = new THREE.DodecahedronGeometry(pickup.type === 'dropped_dust' ? 0.22 : 0.32);
       const crumbMat = new THREE.MeshStandardMaterial({
         color: 0xf59e0b,
@@ -1092,16 +1264,139 @@ export function createDesignerPenthouse(
     }
   }
 
+  // Active sparkle particles array
+  const sparkleParticles: {
+    mesh: THREE.Mesh;
+    vx: number;
+    vy: number;
+    vz: number;
+    life: number;
+    maxLife: number;
+  }[] = [];
+
+  function spawnHighValueCleanBurst(x: number, z: number, color: number = 0xffd700) {
+    const count = 22;
+    const geom = new THREE.TetrahedronGeometry(0.08);
+    const mat = new THREE.MeshBasicMaterial({ color });
+
+    for (let i = 0; i < count; i++) {
+      const pMesh = new THREE.Mesh(geom, mat);
+      pMesh.position.set(x, 0.4, z);
+      scene.add(pMesh);
+
+      const ang = Math.random() * Math.PI * 2;
+      const speed = 2.5 + Math.random() * 4.0;
+      sparkleParticles.push({
+        mesh: pMesh,
+        vx: Math.cos(ang) * speed,
+        vy: 2.8 + Math.random() * 3.5,
+        vz: Math.sin(ang) * speed,
+        life: 0.9,
+        maxLife: 0.9,
+      });
+    }
+  }
+
+  // Dynamic spawn of a new High-Value Spot at a strategic random floor position
+  function spawnDynamicHighValueSpot(): DustPickup | null {
+    // Only spawn if fewer than 4 high value spots are currently uncollected
+    const activeHighValue = pickups.filter((p) => p.isHighValue && !p.collected);
+    if (activeHighValue.length >= 3) return null;
+
+    // Pick location away from walls and dog bed
+    const rx = (Math.random() - 0.5) * 20;
+    const rz = (Math.random() - 0.5) * 20;
+
+    const types: PickupType[] = ['golden_dust', 'diamond_spill', 'sparkle_cache'];
+    const chosenType = types[Math.floor(Math.random() * types.length)];
+    const val = chosenType === 'diamond_spill' ? 150 : chosenType === 'sparkle_cache' ? 130 : 120;
+    const label =
+      chosenType === 'diamond_spill'
+        ? '💎 DIAMOND SPILL +150'
+        : chosenType === 'sparkle_cache'
+        ? '⚡ JOYRIDE BOUNTY +130'
+        : '★ GOLD DUST +120';
+
+    const newSpot: DustPickup = {
+      id: `high_val_${Date.now()}`,
+      x: rx,
+      z: rz,
+      type: chosenType,
+      value: val,
+      radius: 0.95,
+      collected: false,
+      isHighValue: true,
+      label,
+    };
+
+    pickups.push(newSpot);
+    pickupMeshes.set(newSpot.id, createPickupMesh(newSpot));
+    return newSpot;
+  }
+
   let pickupAnimTime = 0;
   function updatePickups(dt: number) {
     pickupAnimTime += dt;
+
     pickups.forEach((p) => {
       const mesh = pickupMeshes.get(p.id);
       if (mesh) {
-        mesh.rotation.y += 2.2 * dt;
-        mesh.position.y = 0.35 + Math.sin(pickupAnimTime * 3 + p.x) * 0.08;
+        if (p.isHighValue) {
+          // Gem spin & gentle bob
+          const gem = mesh.getObjectByName('gem');
+          if (gem) {
+            gem.rotation.y += 2.8 * dt;
+            gem.rotation.x += 1.4 * dt;
+            gem.position.y = 0.45 + Math.sin(pickupAnimTime * 3.5 + p.x) * 0.12;
+          }
+          // Gimbal rings spin on opposite axes
+          const r1 = mesh.getObjectByName('ring1');
+          if (r1) r1.rotation.y += 3.2 * dt;
+          const r2 = mesh.getObjectByName('ring2');
+          if (r2) r2.rotation.x += 2.5 * dt;
+
+          // Beacon pulsing opacity
+          const beacon = mesh.getObjectByName('beacon') as THREE.Mesh;
+          if (beacon && beacon.material) {
+            (beacon.material as THREE.MeshBasicMaterial).opacity =
+              0.22 + Math.sin(pickupAnimTime * 4.5 + p.x) * 0.14;
+          }
+
+          // Floor ring pulse
+          const fRing = mesh.getObjectByName('floorRing');
+          if (fRing) {
+            fRing.rotation.z += 1.2 * dt;
+          }
+
+          // Badge bob
+          const badge = mesh.getObjectByName('badge');
+          if (badge) {
+            badge.position.y = 1.28 + Math.sin(pickupAnimTime * 3.0 + p.z) * 0.08;
+          }
+        } else {
+          mesh.rotation.y += 2.2 * dt;
+          mesh.position.y = 0.35 + Math.sin(pickupAnimTime * 3 + p.x) * 0.08;
+        }
       }
     });
+
+    // Update sparkle particles
+    for (let i = sparkleParticles.length - 1; i >= 0; i--) {
+      const sp = sparkleParticles[i];
+      sp.life -= dt;
+      if (sp.life <= 0) {
+        scene.remove(sp.mesh);
+        sparkleParticles.splice(i, 1);
+        continue;
+      }
+      sp.vy -= 9.8 * dt; // gravity
+      sp.mesh.position.x += sp.vx * dt;
+      sp.mesh.position.y += sp.vy * dt;
+      sp.mesh.position.z += sp.vz * dt;
+      sp.mesh.rotation.x += 6 * dt;
+      sp.mesh.rotation.y += 6 * dt;
+      sp.mesh.scale.setScalar(Math.max(0.01, sp.life / sp.maxLife));
+    }
   }
 
   return {
@@ -1118,5 +1413,7 @@ export function createDesignerPenthouse(
     removePickupMesh,
     cleanHazard,
     spawnDroppedDust,
+    spawnHighValueCleanBurst,
+    spawnDynamicHighValueSpot,
   };
 }

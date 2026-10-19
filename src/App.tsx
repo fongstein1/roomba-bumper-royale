@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { GameMode, GameState, RobotProfile, MatchStats, RobotLiveState } from './types/game';
+import { GameMode, GameState, RobotProfile, MatchStats, RobotLiveState, DustPickup } from './types/game';
 import { GameEngine } from './game/GameEngine';
 import { TitleScreen } from './components/TitleScreen';
 import { GarageCustomizer } from './components/GarageCustomizer';
@@ -20,12 +20,12 @@ const DEFAULT_PROFILES: RobotProfile[] = [
     isHuman: true,
     playerIndex: 1,
     skin: {
-      primaryColor: '#0052ff', // Joyride Royal Electric Blue
-      accentColor: '#00f2fe',  // Joyride Neon Cyan
+      primaryColor: '#003831', // Official Joyride Deep Forest Teal (joyride.city)
+      accentColor: '#00f5a0',  // Official Joyride Electric Mint
       finish: 'glossy',
       decal: 'joyride_fleet',
       topper: 'joyride_scooter',
-      underglowColor: '#0052ff',
+      underglowColor: '#00f5a0',
       sponsor: 'joyride',
     },
   },
@@ -35,12 +35,12 @@ const DEFAULT_PROFILES: RobotProfile[] = [
     isHuman: false,
     playerIndex: 2,
     skin: {
-      primaryColor: '#f97316',
-      accentColor: '#fb923c',
+      primaryColor: '#ff5500', // Radiant Flame Coral
+      accentColor: '#ffa500',
       finish: 'metallic',
       decal: 'plain',
       topper: 'crown',
-      underglowColor: '#ea580c',
+      underglowColor: '#ff5500',
     },
   },
   {
@@ -48,7 +48,7 @@ const DEFAULT_PROFILES: RobotProfile[] = [
     name: 'Sir Sweeps-a-Lot',
     isHuman: false,
     skin: {
-      primaryColor: '#10b981',
+      primaryColor: '#10b981', // Emerald Lime
       accentColor: '#34d399',
       finish: 'carbon',
       decal: 'cyber_circuit',
@@ -61,7 +61,7 @@ const DEFAULT_PROFILES: RobotProfile[] = [
     name: 'Apex Vacuum',
     isHuman: false,
     skin: {
-      primaryColor: '#8b5cf6',
+      primaryColor: '#8b5cf6', // Electric Purple
       accentColor: '#a78bfa',
       finish: 'matte',
       decal: 'polka_dots',
@@ -86,6 +86,9 @@ export default function App() {
   const [coverage, setCoverage] = useState<Record<string, number>>({});
   const [dirtRemaining, setDirtRemaining] = useState<number>(100);
   const [liveRobotStates, setLiveRobotStates] = useState<RobotLiveState[]>([]);
+  const [livePickups, setLivePickups] = useState<DustPickup[]>([]);
+  const [liveDogPos, setLiveDogPos] = useState<{ x: number; z: number; status: string } | null>(null);
+  const [highValueToast, setHighValueToast] = useState<{ message: string; color: string; id: number } | null>(null);
   const [matchStats, setMatchStats] = useState<MatchStats | null>(null);
 
   // Turntable animation loop for garage & title
@@ -101,10 +104,30 @@ export default function App() {
       setTimeRemaining(remaining);
     };
 
-    engine.onScoresUpdate = (cov, dirt, stats) => {
+    engine.onScoresUpdate = (cov, dirt, stats, pickups, dogPos) => {
       setCoverage({ ...cov });
       setDirtRemaining(dirt);
       setLiveRobotStates([...stats]);
+      if (pickups) setLivePickups([...pickups]);
+      if (dogPos) setLiveDogPos({ ...dogPos });
+    };
+
+    engine.onHighValueCleaned = (cleanerName, label, color) => {
+      setHighValueToast({
+        message: `✨ ${cleanerName} CLEANED ${label}!`,
+        color,
+        id: Date.now(),
+      });
+      setTimeout(() => setHighValueToast(null), 3500);
+    };
+
+    engine.onHighValueSpawned = (label) => {
+      setHighValueToast({
+        message: `⭐ ${label}!`,
+        color: '#eab308',
+        id: Date.now(),
+      });
+      setTimeout(() => setHighValueToast(null), 3500);
     };
 
     engine.onMatchEnd = (stats) => {
@@ -283,6 +306,9 @@ export default function App() {
           onVirtualInput={(player, action, active) => {
             engineRef.current?.setVirtualInput(player, action, active);
           }}
+          pickups={livePickups}
+          dogPos={liveDogPos}
+          highValueToast={highValueToast}
         />
       )}
 

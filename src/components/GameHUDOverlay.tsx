@@ -5,7 +5,7 @@
  * for both solo and 2-player split-screen gameplay.
  */
 import React, { useState } from 'react';
-import { GameMode, RobotProfile, RobotLiveState } from '../types/game';
+import { GameMode, RobotProfile, RobotLiveState, DustPickup } from '../types/game';
 import {
   Volume2,
   VolumeX,
@@ -18,6 +18,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Gamepad2,
+  Compass,
+  Star,
 } from 'lucide-react';
 
 interface GameHUDOverlayProps {
@@ -35,6 +37,9 @@ interface GameHUDOverlayProps {
     action: 'up' | 'down' | 'left' | 'right' | 'boost',
     active: boolean
   ) => void;
+  pickups?: DustPickup[];
+  dogPos?: { x: number; z: number; status: string } | null;
+  highValueToast?: { message: string; color: string; id: number } | null;
 }
 
 export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
@@ -48,8 +53,12 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
   onToggleMute,
   onPause,
   onVirtualInput,
+  pickups = [],
+  dogPos = null,
+  highValueToast = null,
 }) => {
   const [showControls, setShowControls] = useState<boolean>(true);
+  const [showMinimap, setShowMinimap] = useState<boolean>(true);
 
   const p1Profile = profiles.find((p) => p.id === 'p1');
   const p2Profile = profiles.find((p) => p.id === 'p2');
@@ -138,6 +147,18 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               <Gamepad2 className="w-4 h-4" />
               <span className="hidden sm:inline">Controls</span>
             </button>
+            <button
+              onClick={() => setShowMinimap((prev) => !prev)}
+              title="Toggle Arena Radar Minimap"
+              className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+                showMinimap
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                  : 'bg-neutral-900 border-neutral-700/60 text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span className="hidden sm:inline">Radar</span>
+            </button>
           </div>
 
           {/* Tabular Match Timer */}
@@ -151,29 +172,43 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             </div>
           </div>
 
-          {/* Current Leader Tag */}
-          {currentLeader && (
-            <div className="flex items-center gap-2 text-xs">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span className="text-neutral-400 hidden sm:inline">Leader:</span>
-              <span className="font-semibold text-neutral-200 truncate max-w-[90px] sm:max-w-[120px]">
-                {currentLeader.name}
-              </span>
-              <span className="font-mono font-bold text-cyan-400 tabular-nums">
-                {(coverage[currentLeader.id] || 0).toFixed(0)}%
-              </span>
-            </div>
-          )}
+          {/* High-Value spots count & Leader Tag */}
+          <div className="flex items-center gap-2">
+            {pickups.filter((p) => p.isHighValue && !p.collected).length > 0 && (
+              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>{pickups.filter((p) => p.isHighValue && !p.collected).length} High Value</span>
+              </div>
+            )}
+            {currentLeader && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <Award className="w-4 h-4 text-amber-400" />
+                <span className="text-neutral-400 hidden sm:inline">Leader:</span>
+                <span className="font-semibold text-neutral-200 truncate max-w-[85px] sm:max-w-[110px]">
+                  {currentLeader.name}
+                </span>
+                <span className="font-mono font-bold text-cyan-400 tabular-nums">
+                  {(coverage[currentLeader.id] || 0).toFixed(0)}%
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Real-time Multi-Segment Territory Bar */}
         <div className="w-full bg-neutral-950/85 border border-neutral-800 rounded-xl p-2 shadow-lg backdrop-blur-md flex flex-col gap-1">
           <div className="flex items-center justify-between text-[11px] text-neutral-400 font-medium px-1">
             <div className="flex items-center gap-2.5 overflow-x-auto">
+              <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase hidden md:inline">
+                TERRITORY:
+              </span>
               {profiles.map((p) => (
-                <div key={p.id} className="flex items-center gap-1 shrink-0">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.skin.primaryColor }} />
-                  <span className="truncate max-w-[75px] text-neutral-300">{p.name}:</span>
+                <div key={p.id} className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className="w-2.5 h-2.5 rounded-full ring-2 ring-white/20"
+                    style={{ backgroundColor: p.skin.primaryColor }}
+                  />
+                  <span className="truncate max-w-[75px] text-neutral-300 font-semibold">{p.name}:</span>
                   <span className="font-mono font-bold text-white tabular-nums">
                     {(coverage[p.id] || 0).toFixed(1)}%
                   </span>
@@ -187,7 +222,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
           </div>
 
           {/* Segmented Progress Bar */}
-          <div className="w-full h-2.5 bg-neutral-800 rounded-full overflow-hidden flex">
+          <div className="w-full h-3 bg-neutral-800/90 rounded-full overflow-hidden flex border border-neutral-700/40 p-0.5">
             {profiles.map((p) => {
               const pct = coverage[p.id] || 0;
               return (
@@ -197,14 +232,117 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
                     width: `${pct}%`,
                     backgroundColor: p.skin.primaryColor,
                   }}
-                  className="h-full transition-all duration-300"
+                  className="h-full transition-all duration-300 rounded-sm"
                 />
               );
             })}
-            <div style={{ width: `${dirtRemaining}%` }} className="h-full bg-neutral-700/80" />
+            <div style={{ width: `${dirtRemaining}%` }} className="h-full bg-neutral-700/80 rounded-sm" />
           </div>
         </div>
       </div>
+
+      {/* HIGH VALUE CLEAN / SPAWN TOAST BANNER */}
+      {highValueToast && (
+        <div
+          key={highValueToast.id}
+          className="mx-auto mt-2 bg-neutral-950/95 border-2 rounded-2xl px-5 py-2 shadow-2xl backdrop-blur-md flex items-center gap-2.5 animate-bounce pointer-events-none z-30"
+          style={{ borderColor: highValueToast.color || '#eab308' }}
+        >
+          <Star className="w-5 h-5 fill-amber-400 text-amber-400 shrink-0" />
+          <span className="font-extrabold text-xs sm:text-sm text-white tracking-wide">
+            {highValueToast.message}
+          </span>
+        </div>
+      )}
+
+      {/* TACTICAL TERRITORY RADAR MINIMAP */}
+      {showMinimap && (
+        <div className="absolute top-28 right-3 sm:right-5 pointer-events-auto bg-neutral-950/90 border border-neutral-800 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 z-20">
+          <div className="flex items-center justify-between text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
+            <span className="flex items-center gap-1 text-cyan-400">
+              <Compass className="w-3.5 h-3.5" /> Arena Radar
+            </span>
+            <span className="text-amber-400 font-mono text-[9px]">30m</span>
+          </div>
+
+          <div className="relative w-32 h-32 bg-neutral-900/90 rounded-xl border border-neutral-700/60 overflow-hidden shadow-inner">
+            {/* Arena quadrants */}
+            <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 opacity-25 pointer-events-none">
+              <div className="border-r border-b border-cyan-400" />
+              <div className="border-b border-cyan-400" />
+              <div className="border-r border-cyan-400" />
+              <div />
+            </div>
+
+            {/* High Value Spots (Golden stars / Diamond gems) */}
+            {pickups
+              .filter((p) => p.isHighValue && !p.collected)
+              .map((p) => {
+                const left = ((p.x + 15) / 30) * 100;
+                const top = ((p.z + 15) / 30) * 100;
+                return (
+                  <div
+                    key={p.id}
+                    style={{ left: `${left}%`, top: `${top}%` }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
+                  >
+                    <div className="w-4 h-4 rounded-full bg-amber-400/40 animate-ping absolute" />
+                    <span className="text-[13px] leading-none select-none">
+                      {p.type === 'diamond_spill' ? '💎' : '⭐'}
+                    </span>
+                  </div>
+                );
+              })}
+
+            {/* Dog Blip */}
+            {dogPos && (
+              <div
+                style={{
+                  left: `${Math.max(4, Math.min(96, ((dogPos.x + 15) / 30) * 100))}%`,
+                  top: `${Math.max(4, Math.min(96, ((dogPos.z + 15) / 30) * 100))}%`,
+                }}
+                className="absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none"
+              >
+                {dogPos.status === 'chasing' && (
+                  <div className="w-5 h-5 rounded-full border border-amber-400 animate-ping absolute" />
+                )}
+                <span className="text-[12px] leading-none select-none">🐕</span>
+              </div>
+            )}
+
+            {/* Robots Blips */}
+            {states.map((st) => {
+              const prof = profiles.find((p) => p.id === st.id);
+              const left = Math.max(4, Math.min(96, ((st.x + 15) / 30) * 100));
+              const top = Math.max(4, Math.min(96, ((st.z + 15) / 30) * 100));
+              const col = prof?.skin.primaryColor || '#00f5a0';
+              return (
+                <div
+                  key={st.id}
+                  style={{ left: `${left}%`, top: `${top}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                >
+                  <div
+                    className="w-3.5 h-3.5 rounded-full border-2 border-white shadow flex items-center justify-center"
+                    style={{ backgroundColor: col }}
+                  >
+                    {prof?.isHuman && <span className="w-1 h-1 rounded-full bg-white" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-[9px] text-neutral-400 font-medium">
+            <span className="flex items-center gap-1">
+              <span className="text-[10px]">⭐</span> High Value
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-[10px]">🐕</span> Dog
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* DOG GRAB ALERT NOTIFICATION */}
       {p1State?.isDogGrabbed && (

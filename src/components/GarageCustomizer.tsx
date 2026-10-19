@@ -18,9 +18,9 @@ interface GarageCustomizerProps {
 }
 
 const COLOR_PRESETS = [
-  { name: 'Joyride Fleet (Sponsor)', primary: '#0052ff', accent: '#00f2fe', underglow: '#0052ff' },
+  { name: 'Joyride Fleet (Official)', primary: '#003831', accent: '#00f5a0', underglow: '#00f5a0' },
   { name: 'Electric Teal', primary: '#0ea5e9', accent: '#38bdf8', underglow: '#0284c7' },
-  { name: 'Blaze Coral', primary: '#f97316', accent: '#fb923c', underglow: '#ea580c' },
+  { name: 'Blaze Coral', primary: '#ff5500', accent: '#ffa500', underglow: '#ff5500' },
   { name: 'Emerald Tech', primary: '#10b981', accent: '#34d399', underglow: '#059669' },
   { name: 'Cyber Violet', primary: '#8b5cf6', accent: '#a78bfa', underglow: '#7c3aed' },
   { name: 'Golden Luxe', primary: '#f59e0b', accent: '#fde047', underglow: '#d97706' },
@@ -162,22 +162,22 @@ export const GarageCustomizer: React.FC<GarageCustomizerProps> = ({
               <button
                 onClick={() => {
                   updateCurrentSkin({
-                    primaryColor: '#0052ff',
-                    accentColor: '#00f2fe',
+                    primaryColor: '#003831',
+                    accentColor: '#00f5a0',
                     finish: 'glossy',
                     decal: 'joyride_fleet',
                     topper: 'joyride_scooter',
-                    underglowColor: '#0052ff',
+                    underglowColor: '#00f5a0',
                     sponsor: 'joyride',
                   });
                 }}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-blue-700/80 to-cyan-600/80 border border-cyan-400 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 hover:brightness-110 transition-all cursor-pointer"
+                className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-800 border-2 border-emerald-400 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 hover:brightness-110 transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-cyan-200 fill-current" />
+                  <Zap className="w-4 h-4 text-emerald-300 fill-current" />
                   <div className="text-left">
                     <div className="text-white text-xs font-black">Official Joyride Fleet Skin</div>
-                    <div className="text-[10px] text-cyan-200 font-normal">SaaS Micromobility Livery</div>
+                    <div className="text-[10px] text-emerald-300 font-normal">joyride.city Fleet Platform</div>
                   </div>
                 </div>
                 <span className="text-[10px] font-mono bg-white/20 px-2 py-0.5 rounded text-white font-bold">APPLY</span>

@@ -237,18 +237,34 @@ export class FloorTextureManager {
     ctx.lineTo(scX + 6, scY - 14); // handlebar
     ctx.stroke();
 
-    // "JOYRIDE" brand text
+    // Official "Joyride" brand text with logo pin (from image.png)
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('JOYRIDE', sponsorX - 65, sponsorY - 10);
+    ctx.fillText('Joyride', sponsorX - 60, sponsorY - 10);
+
+    // Pin icon above the text
+    ctx.save();
+    ctx.translate(sponsorX - 35, sponsorY - 32);
+    ctx.rotate(-Math.PI * 0.12);
+    ctx.fillStyle = '#00f5a0';
+    ctx.beginPath();
+    ctx.arc(0, -3, 14, -Math.PI * 0.28, Math.PI * 0.95);
+    ctx.lineTo(-13, 13);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#003831';
+    ctx.beginPath();
+    ctx.arc(0, -3, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
     // Subtitle: "MICROMOBILITY FLEET PLATFORM"
-    ctx.fillStyle = '#00f2fe';
+    ctx.fillStyle = '#00f5a0';
     ctx.font = 'bold 11px "JetBrains Mono", monospace';
     ctx.letterSpacing = '1px';
-    ctx.fillText('SHARED SCOOTER & BIKE FLEETS', sponsorX - 65, sponsorY + 18);
+    ctx.fillText('SHARED SCOOTER & BIKE FLEETS', sponsorX - 60, sponsorY + 18);
     ctx.restore();
 
     // 5. OFFICIAL SPONSORSHIP FLOOR GRAPHIC #2: JOYRIDE FLEET MOBILITY HUB / DOCKING STATION
@@ -259,17 +275,17 @@ export class FloorTextureManager {
     const hubH = 140;
 
     ctx.save();
-    // Industrial tech bay plate
-    ctx.fillStyle = 'rgba(11, 19, 43, 0.85)';
-    ctx.strokeStyle = '#00f2fe';
+    // Industrial tech bay plate in official Joyride Forest Teal
+    ctx.fillStyle = 'rgba(0, 56, 49, 0.92)';
+    ctx.strokeStyle = '#00f5a0';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.roundRect(hubX - hubW / 2, hubY - hubH / 2, hubW, hubH, 12);
     ctx.fill();
     ctx.stroke();
 
-    // Diagonal cyan hazard stripes along top and bottom
-    ctx.strokeStyle = 'rgba(0, 242, 254, 0.6)';
+    // Diagonal mint hazard stripes along top and bottom
+    ctx.strokeStyle = 'rgba(0, 245, 160, 0.6)';
     ctx.lineWidth = 2;
     for (let sx = hubX - hubW / 2 + 10; sx < hubX + hubW / 2; sx += 18) {
       ctx.beginPath();
@@ -289,7 +305,7 @@ export class FloorTextureManager {
     ctx.textAlign = 'center';
     ctx.fillText('JOYRIDE FLEET HUB', hubX, hubY - 26);
 
-    ctx.fillStyle = '#00f2fe';
+    ctx.fillStyle = '#00f5a0';
     ctx.font = 'bold 10px "JetBrains Mono", monospace';
     ctx.fillText('DEDICATED E-SCOOTER PARKING', hubX, hubY - 8);
 
@@ -297,7 +313,7 @@ export class FloorTextureManager {
     for (let i = -1; i <= 1; i++) {
       const bx = hubX + i * 72;
       const by = hubY + 28;
-      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeStyle = '#00f5a0';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(bx - 26, by - 18, 52, 36);
 
@@ -390,7 +406,26 @@ export class FloorTextureManager {
   }
 
   /**
-   * Apply a vacuum clean stamp at the given robot coordinates
+   * Helper to parse hex or named colors into RGB components
+   */
+  public parseColorToRgb(color: string): { r: number; g: number; b: number } {
+    if (color && color.startsWith('#')) {
+      let c = color.slice(1);
+      if (c.length === 3) c = c.split('').map((x) => x + x).join('');
+      const num = parseInt(c, 16);
+      if (!isNaN(num)) {
+        return {
+          r: (num >> 16) & 255,
+          g: (num >> 8) & 255,
+          b: num & 255,
+        };
+      }
+    }
+    return { r: 0, g: 150, b: 255 };
+  }
+
+  /**
+   * Apply a vacuum clean stamp at the given robot coordinates with vivid, high-clarity territory coloring
    */
   public sweep(sweep: SweepPoint) {
     const { cx, cy } = this.worldToCanvas(sweep.x, sweep.z);
@@ -405,13 +440,35 @@ export class FloorTextureManager {
     // Draw the sparkling clean wood/tile/rug
     this.ctx.drawImage(this.baseCanvas, 0, 0);
 
-    // Overlay player's clean signature wax tint with soft radial falloff
-    const grad = this.ctx.createRadialGradient(cx, cy, radiusPx * 0.2, cx, cy, radiusPx);
-    grad.addColorStop(0, `${sweep.color}35`); // subtle luminous center
-    grad.addColorStop(0.7, `${sweep.color}20`);
-    grad.addColorStop(1, `${sweep.color}55`); // crisp outer brush ring edge
+    // Overlay player's clean signature territory color with strong, unmistakable saturation
+    const rgb = this.parseColorToRgb(sweep.color);
+    const grad = this.ctx.createRadialGradient(cx, cy, radiusPx * 0.1, cx, cy, radiusPx);
+    grad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.58)`);
+    grad.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.72)`);
+    grad.addColorStop(0.85, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.88)`);
+    grad.addColorStop(1, `rgba(${Math.min(255, rgb.r + 40)}, ${Math.min(255, rgb.g + 40)}, ${Math.min(255, rgb.b + 40)}, 0.98)`);
 
     this.ctx.fillStyle = grad;
+    this.ctx.fill();
+
+    // Crisp neon edge contour marking territory borders
+    this.ctx.strokeStyle = `rgba(${Math.min(255, rgb.r + 60)}, ${Math.min(255, rgb.g + 60)}, ${Math.min(255, rgb.b + 60)}, 0.92)`;
+    this.ctx.lineWidth = 2.5;
+    this.ctx.stroke();
+
+    // Clean glossy specular sheen in the center
+    const shine = this.ctx.createRadialGradient(
+      cx - radiusPx * 0.25,
+      cy - radiusPx * 0.25,
+      1,
+      cx,
+      cy,
+      radiusPx * 0.6
+    );
+    shine.addColorStop(0, 'rgba(255, 255, 255, 0.40)');
+    shine.addColorStop(0.5, 'rgba(255, 255, 255, 0.10)');
+    shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    this.ctx.fillStyle = shine;
     this.ctx.fill();
 
     this.ctx.restore();
@@ -433,6 +490,67 @@ export class FloorTextureManager {
         }
       }
     }
+
+    this.texture.needsUpdate = true;
+  }
+
+  /**
+   * Stamp an indelible high-value golden starburst insignia where a high-value spot was cleaned
+   */
+  public stampHighValueClean(x: number, z: number, playerColor: string, value: number, label: string = '★ HIGH VALUE') {
+    const { cx, cy } = this.worldToCanvas(x, z);
+    const radiusPx = (1.1 / this.arenaSize) * this.canvas.width;
+
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, radiusPx, 0, Math.PI * 2);
+    this.ctx.clip();
+
+    // Draw base floor clean
+    this.ctx.drawImage(this.baseCanvas, 0, 0);
+
+    // Radiant golden/player burst
+    const rgb = this.parseColorToRgb(playerColor);
+    const burstGrad = this.ctx.createRadialGradient(cx, cy, 5, cx, cy, radiusPx);
+    burstGrad.addColorStop(0, '#fef08a'); // luminous golden yellow
+    burstGrad.addColorStop(0.45, '#eab308');
+    burstGrad.addColorStop(0.75, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.85)`);
+    burstGrad.addColorStop(1, '#ca8a04');
+    this.ctx.fillStyle = burstGrad;
+    this.ctx.fill();
+
+    // Outer golden laurel ring
+    this.ctx.strokeStyle = '#fef08a';
+    this.ctx.lineWidth = 3.5;
+    this.ctx.stroke();
+
+    // 8-pointed golden star emblem
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.beginPath();
+    const spikes = 8;
+    const outerR = radiusPx * 0.45;
+    const innerR = radiusPx * 0.2;
+    for (let i = 0; i < spikes * 2; i++) {
+      const r = i % 2 === 0 ? outerR : innerR;
+      const a = (i * Math.PI) / spikes - Math.PI / 2;
+      const sx = cx + Math.cos(a) * r;
+      const sy = cy + Math.sin(a) * r;
+      if (i === 0) this.ctx.moveTo(sx, sy);
+      else this.ctx.lineTo(sx, sy);
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+
+    // Floating text label
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = '900 12px "Plus Jakarta Sans", sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    this.ctx.shadowBlur = 4;
+    this.ctx.fillText(`+${value}`, cx, cy + radiusPx * 0.65);
+
+    this.ctx.restore();
 
     this.texture.needsUpdate = true;
   }

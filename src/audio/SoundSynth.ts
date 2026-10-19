@@ -312,6 +312,56 @@ class SoundSynthEngine {
     osc.start(now);
     osc.stop(now + 0.22);
   }
+
+  /**
+   * High Value Clean chime: triumphant crystal fanfare
+   */
+  public playHighValueChime() {
+    if (!this.ctx || !this.masterGain || this.muted) return;
+    this.ensureContext();
+    const now = this.ctx.currentTime;
+    const notes = [1046.5, 1318.5, 1567.98, 2093.0]; // C6, E6, G6, C7
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+      gain.gain.setValueAtTime(0, now + idx * 0.06);
+      gain.gain.linearRampToValueAtTime(0.4, now + idx * 0.06 + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.28);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+      osc.start(now + idx * 0.06);
+      osc.stop(now + idx * 0.06 + 0.3);
+    });
+  }
+
+  /**
+   * High Value Spot spawn announcement chime
+   */
+  public playHighValueSpawn() {
+    if (!this.ctx || !this.masterGain || this.muted) return;
+    this.ensureContext();
+    const now = this.ctx.currentTime;
+    const freqs = [587.33, 880.0, 1174.66]; // D5, A5, D6
+    freqs.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+      gain.gain.setValueAtTime(0, now + idx * 0.08);
+      gain.gain.linearRampToValueAtTime(0.25, now + idx * 0.08 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.4);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+      osc.start(now + idx * 0.08);
+      osc.stop(now + idx * 0.08 + 0.45);
+    });
+  }
 }
 
 export const soundSynth = new SoundSynthEngine();

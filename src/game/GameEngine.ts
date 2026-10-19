@@ -10,6 +10,7 @@ import {
   RobotProfile,
   RobotLiveState,
   MatchStats,
+  DustPickup,
 } from '../types/game';
 import { createProceduralRoomba, RoombaMeshParts } from './ProceduralRoomba';
 import { createDesignerPenthouse, ArenaComponents } from './ArenaScene';
@@ -63,9 +64,21 @@ export class GameEngine {
   private cameraShake: number = 0;
   private hitstopDuration: number = 0;
 
+  // High Value Spot Spawning & Tracking
+  private highValueTimer: number = 0;
+  private lastDogStatus: string = 'patrol';
+
   // Callbacks to React UI
   public onTimeUpdate?: (remaining: number) => void;
-  public onScoresUpdate?: (coverage: Record<string, number>, dirtRemaining: number, stats: RobotLiveState[]) => void;
+  public onScoresUpdate?: (
+    coverage: Record<string, number>,
+    dirtRemaining: number,
+    stats: RobotLiveState[],
+    pickups?: DustPickup[],
+    dogPos?: { x: number; z: number; status: string }
+  ) => void;
+  public onHighValueCleaned?: (cleanerName: string, label: string, color: string) => void;
+  public onHighValueSpawned?: (label: string) => void;
   public onMatchEnd?: (stats: MatchStats) => void;
 
   private boundKeyDown: (e: KeyboardEvent) => void;
@@ -282,6 +295,7 @@ export class GameEngine {
       z: st.z,
     }));
     const dogResult = this.arena.updateDog(dt, robotPositions);
+    this.lastDogStatus = dogResult.dogStatus;
 
     if (dogResult.grabbedRobotId) {
       const gState = this.states.get(dogResult.grabbedRobotId);
@@ -315,6 +329,17 @@ export class GameEngine {
     }
 
     this.arena.updatePickups(dt);
+
+    // Periodic High Value Spot dynamic spawn check (every 18s)
+    this.highValueTimer += dt;
+    if (this.highValueTimer >= 18.0) {
+      this.highValueTimer = 0;
+      const spawned = this.arena.spawnDynamicHighValueSpot();
+      if (spawned) {
+        soundSynth.playHighValueSpawn();
+        this.onHighValueSpawned?.(spawned.label || '★ HIGH VALUE SPOT DETECTED!');
+      }
+    }
 
     // Update Camera Shake
     if (this.cameraShake > 0) {
@@ -513,7 +538,7 @@ export class GameEngine {
         }
       });
 
-      // Pickups collision
+      // Pickups & High Value Spots collision
       this.arena.pickups.forEach((pickup) => {
         if (pickup.collected) return;
         const dist = Math.hypot(state.x - pickup.x, state.z - pickup.z);
@@ -521,14 +546,34 @@ export class GameEngine {
           pickup.collected = true;
           this.arena.removePickupMesh(pickup.id);
 
-          if (pickup.type === 'battery_boost') {
+          if (pickup.isHighValue) {
+            // HIGH-VALUE SPOT CLEANED!
+            state.dustPoints += pickup.value;
+            state.boost = 100; // instant turbo recharge
+            this.arena.spawnHighValueCleanBurst(pickup.x, pickup.z);
+            this.floorManager.stampHighValueClean(
+              pickup.x,
+              pickup.z,
+              profile.skin.primaryColor,
+              pickup.value,
+              pickup.label
+            );
+            soundSynth.playHighValueChime();
+            this.onHighValueCleaned?.(
+              profile.name,
+              pickup.label || `★ +${pickup.value} PTS`,
+              profile.skin.primaryColor
+            );
+          } else if (pickup.type === 'battery_boost') {
             state.boost = 100;
+            if (profile.isHuman) {
+              soundSynth.playVacuumPop();
+            }
           } else {
             state.dustPoints += pickup.value;
-          }
-
-          if (profile.isHuman) {
-            soundSynth.playVacuumPop();
+            if (profile.isHuman) {
+              soundSynth.playVacuumPop();
+            }
           }
         }
       });
@@ -633,12 +678,14 @@ export class GameEngine {
     let minTargetDist = 999;
     let foundPickup = false;
 
-    // 1. Look for uncollected crumbs or dropped dust
+    // 1. Look for uncollected pickups, giving HIGH-VALUE spots 3.5x priority
     this.arena.pickups.forEach((p) => {
       if (p.collected) return;
       const d = Math.hypot(p.x - bot.x, p.z - bot.z);
-      if (d < minTargetDist) {
-        minTargetDist = d;
+      // High value spots appear 3.5x closer to AI bots so they aggressively rush to contest them!
+      const effectiveDist = p.isHighValue ? d / 3.5 : d;
+      if (effectiveDist < minTargetDist) {
+        minTargetDist = effectiveDist;
         targetX = p.x;
         targetZ = p.z;
         foundPickup = true;
@@ -679,7 +726,19 @@ export class GameEngine {
     });
 
     if (this.onScoresUpdate) {
-      this.onScoresUpdate(coverageData.playerPercents, coverageData.dirtRemainingPercent, liveStats);
+      const activePickups = this.arena.pickups.filter((p) => !p.collected);
+      const dogPos = {
+        x: this.arena.dogGroup.position.x,
+        z: this.arena.dogGroup.position.z,
+        status: this.lastDogStatus,
+      };
+      this.onScoresUpdate(
+        coverageData.playerPercents,
+        coverageData.dirtRemainingPercent,
+        liveStats,
+        activePickups,
+        dogPos
+      );
     }
   }
 

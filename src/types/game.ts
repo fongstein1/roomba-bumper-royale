@@ -57,15 +57,25 @@ export interface RobotLiveState {
   isDogGrabbed?: boolean;
 }
 
+export type PickupType =
+  | 'mega_crumb'
+  | 'battery_boost'
+  | 'dropped_dust'
+  | 'golden_dust'
+  | 'diamond_spill'
+  | 'sparkle_cache';
+
 export interface DustPickup {
   id: string;
   x: number;
   z: number;
-  type: 'mega_crumb' | 'battery_boost' | 'dropped_dust';
+  type: PickupType;
   value: number;
   radius: number;
   collected: boolean;
   respawnTime?: number;
+  isHighValue?: boolean;
+  label?: string;
 }
 
 export interface HazardZone {

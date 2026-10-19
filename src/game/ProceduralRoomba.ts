@@ -104,9 +104,9 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
     const isJoyride = currentSkin.decal === 'joyride_fleet' || currentSkin.sponsor === 'joyride';
 
     if (isJoyride) {
-      // OFFICIAL JOYRIDE FLEET GRAPHICS (Shared Scooter & Bike Fleet SaaS)
-      // Tech grid background
-      ctx.strokeStyle = 'rgba(0, 242, 254, 0.18)';
+      // OFFICIAL JOYRIDE FLEET GRAPHICS (joyride.city - Shared Scooter & Bike Fleet SaaS)
+      // Tech grid background in subtle cyan/mint
+      ctx.strokeStyle = 'rgba(0, 245, 160, 0.18)';
       ctx.lineWidth = 2;
       for (let x = 60; x <= w - 60; x += 40) {
         ctx.beginPath();
@@ -121,15 +121,15 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
         ctx.stroke();
       }
 
-      // Neon cyan telemetry track arc
-      ctx.strokeStyle = '#00f2fe';
+      // Neon telemetry track arc
+      ctx.strokeStyle = '#00f5a0';
       ctx.lineWidth = 8;
       ctx.beginPath();
-      ctx.arc(cx, cy, 190, -Math.PI * 0.75, Math.PI * 0.75);
+      ctx.arc(cx, cy, 192, -Math.PI * 0.75, Math.PI * 0.75);
       ctx.stroke();
 
       // Fleet Connected Waves (top arc)
-      ctx.strokeStyle = '#00f2fe';
+      ctx.strokeStyle = '#00f5a0';
       ctx.lineWidth = 3;
       for (let r = 205; r <= 225; r += 10) {
         ctx.beginPath();
@@ -137,52 +137,75 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
         ctx.stroke();
       }
 
-      // Center Joyride badge badge
-      ctx.fillStyle = 'rgba(11, 19, 43, 0.92)';
+      // Central Joyride Emblem Shield
+      ctx.fillStyle = '#003831'; // Joyride Signature Dark Forest Teal
       ctx.beginPath();
-      ctx.arc(cx, cy + 20, 110, 0, Math.PI * 2);
+      ctx.arc(cx, cy + 10, 128, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#00f2fe';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#00f5a0';
+      ctx.lineWidth = 4.5;
       ctx.stroke();
 
-      // Joyride Electric Scooter Silhouette in Cyan
-      ctx.fillStyle = '#00f2fe';
-      ctx.strokeStyle = '#00f2fe';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      const scX = cx;
-      const scY = cy - 20;
+      // Official Joyride Logo from image.png:
+      // Teardrop / Map-marker pin with gear/sprocket cutout in center + "Joyride" Wordmark
+      ctx.save();
+      ctx.translate(cx, cy - 8);
 
-      // Scooter Wheels
-      ctx.beginPath();
-      ctx.arc(scX - 35, scY + 22, 10, 0, Math.PI * 2);
-      ctx.arc(scX + 35, scY + 22, 10, 0, Math.PI * 2);
-      ctx.stroke();
-      // Scooter Deck & Steering Column
-      ctx.beginPath();
-      ctx.moveTo(scX - 35, scY + 22);
-      ctx.lineTo(scX + 35, scY + 22);
-      ctx.lineTo(scX + 26, scY - 26);
-      ctx.lineTo(scX + 12, scY - 26); // handlebar
-      ctx.stroke();
+      // Pin positioned above the wordmark (above the 'r' and 'i')
+      const pinX = 36;
+      const pinY = -34;
+      const pinR = 28;
 
-      // Bold "JOYRIDE" brand text
+      ctx.save();
+      ctx.translate(pinX, pinY);
+      ctx.rotate(-Math.PI * 0.12);
+
+      // Outer Teardrop Pin in Joyride White / Mint
       ctx.fillStyle = '#ffffff';
-      ctx.font = '900 42px "Plus Jakarta Sans", sans-serif';
+      ctx.beginPath();
+      ctx.arc(0, -6, pinR, -Math.PI * 0.28, Math.PI * 0.95, false);
+      ctx.lineTo(-pinR * 0.95, pinR * 0.92);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gear / Sprocket cutout in center of pin
+      ctx.fillStyle = '#003831';
+      ctx.beginPath();
+      const teeth = 12;
+      const outerSpur = 14;
+      const innerSpur = 10;
+      for (let t = 0; t < teeth * 2; t++) {
+        const angle = (t * Math.PI) / teeth;
+        const rad = t % 2 === 0 ? outerSpur : innerSpur;
+        const gx = Math.cos(angle) * rad;
+        const gy = -6 + Math.sin(angle) * rad;
+        if (t === 0) ctx.moveTo(gx, gy);
+        else ctx.lineTo(gx, gy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Bold "Joyride" brand wordmark
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 58px "Plus Jakarta Sans", "Inter", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('JOYRIDE', cx, cy + 35);
+      ctx.letterSpacing = '-1px';
+      ctx.fillText('Joyride', 0, 18);
 
-      // "FLEET OS" badge
-      ctx.fillStyle = '#00f2fe';
-      ctx.font = 'bold 16px "JetBrains Mono", monospace';
-      ctx.fillText('FLEET MOBILITY OS', cx, cy + 70);
+      // Micromobility tagline
+      ctx.fillStyle = '#00f5a0';
+      ctx.font = 'bold 13px "JetBrains Mono", monospace';
+      ctx.letterSpacing = '1.5px';
+      ctx.fillText('SHARED MOBILITY OS', 0, 62);
+      ctx.restore();
 
       // Top badge
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 14px "JetBrains Mono", monospace';
-      ctx.fillText('SCOOTER & BIKE SAAS', cx, cy - 80);
+      ctx.font = 'bold 12px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SCOOTER & BIKE FLEET PLATFORM', cx, cy - 85);
     } else if (currentSkin.decal === 'racing_stripes') {
       // Dual high-speed racing stripes
       ctx.fillStyle = currentSkin.accentColor;

@@ -93,6 +93,13 @@ describe('release regressions', () => {
     expect(engine.matchTimeRemaining).toBe(0);
     expect(pending.size).toBe(0);
   });
+  it('starts the timer after the first scene render has finished warming up', () => {
+    vi.mocked(engine.render).mockImplementationOnce(() => { now += 30000; });
+    engine.startMatch();
+    expect(engine.matchTimeRemaining).toBe(90);
+    frame(1000);
+    expect(engine.matchTimeRemaining).toBe(89);
+  });
   it('moves the same distance for a 200ms frame as four 50ms frames', () => {
     engine.startMatch();
     engine.setVirtualInput('p1', 'up', true);

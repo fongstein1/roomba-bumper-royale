@@ -258,12 +258,16 @@ export class GameEngine {
     this.matchTotalTime = durationSeconds;
     this.floorManager.resetDust();
     this.initRobots();
+    // Warm the restored scene before starting the clock: shader compilation can
+    // otherwise consume a large part of a rematch on software/mobile renderers.
+    this.render();
     this.isRunning = true;
     this.isPaused = false;
     this.lastTime = performance.now();
     soundSynth.ensureContext();
     this.onTimeUpdate?.(durationSeconds);
     this.calculateMatchScores();
+    this.lastTime = performance.now();
     this.animationFrameId = requestAnimationFrame(this.loop);
   }
 

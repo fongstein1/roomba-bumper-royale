@@ -5,6 +5,7 @@
  * spring-loaded bumpers, and novelty 3D toppers. Zero external assets (zero 404s).
  */
 import * as THREE from 'three';
+import { disposeObject } from './disposeObject';
 import { RobotSkinConfig, TopperType, FinishType } from '../types/game';
 
 export interface RoombaMeshParts {
@@ -445,6 +446,7 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
 
   function buildTopper(type: TopperType) {
     while (topperGroup.children.length > 0) {
+      disposeObject(topperGroup.children[0]);
       topperGroup.remove(topperGroup.children[0]);
     }
     if (type === 'none') return;
@@ -671,6 +673,8 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
   }
 
   function updateSkin(newSkin: RobotSkinConfig) {
+    skin = newSkin;
+    (chassis.material as THREE.Material).dispose();
     chassis.material = getBodyMaterial(newSkin.primaryColor, newSkin.finish);
     chamferMat.color.set(newSkin.accentColor);
     ledMat.color.set(newSkin.primaryColor);
@@ -682,6 +686,7 @@ export function createProceduralRoomba(skin: RobotSkinConfig, radius: number = 0
     const newCanvas = createDecalCanvas(newSkin);
     const newTex = new THREE.CanvasTexture(newCanvas);
     newTex.colorSpace = THREE.SRGBColorSpace;
+    decalMat.map?.dispose();
     decalMat.map = newTex;
     decalMat.roughness = newSkin.finish === 'glossy' ? 0.2 : 0.5;
     decalMat.metalness = newSkin.finish === 'metallic' ? 0.6 : 0.1;

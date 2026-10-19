@@ -8,6 +8,7 @@ import confetti from 'canvas-confetti';
 import { MatchStats } from '../types/game';
 import { Trophy, RotateCcw, Palette, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { soundSynth } from '../audio/SoundSynth';
+import { totalScore } from '../game/scoring';
 
 interface PodiumScreenProps {
   stats: MatchStats;
@@ -51,7 +52,7 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md select-none animate-fadeIn">
-      <div className="w-full max-w-2xl bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col items-center text-center">
+      <div role="dialog" aria-modal="true" aria-label="Match results" className="modal-card menu-scroll w-full max-w-2xl bg-neutral-900 border border-neutral-700/80 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col items-center text-center">
         {/* Trophy Hero Icon */}
         <div className="w-18 h-18 rounded-2xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 shadow-xl mb-4">
           <Trophy className="w-10 h-10 animate-bounce" />
@@ -68,13 +69,15 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
         </p>
 
         {/* Leaderboard Table */}
-        <div className="w-full bg-neutral-950/80 border border-neutral-800 rounded-2xl overflow-hidden mb-6">
+        <p className="text-xs text-neutral-400 mb-3">Score = coverage × 10 + dust points + heavy bumps × 25. Ties use starting order.</p>
+        <div className="w-full bg-neutral-950/80 border border-neutral-800 rounded-2xl overflow-x-auto shrink-0 mb-6 touch-pan-x">
+        <div className="min-w-[500px]">
           <div className="grid grid-cols-12 px-4 py-2.5 text-[11px] font-semibold text-neutral-400 border-b border-neutral-800 uppercase tracking-wider">
             <span className="col-span-2 text-left">Rank</span>
             <span className="col-span-4 text-left">Vacuum</span>
             <span className="col-span-2 text-right">Coverage</span>
             <span className="col-span-2 text-right">Dust Pts</span>
-            <span className="col-span-2 text-right">Bumps</span>
+            <span className="col-span-2 text-right">Score</span>
           </div>
 
           <div className="divide-y divide-neutral-800/60">
@@ -83,6 +86,11 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
               return (
                 <div
                   key={robot.id}
+                  data-testid="result-row"
+                  data-coverage={robot.coveragePercent}
+                  data-dust={robot.dustPoints}
+                  data-bumps={robot.bumpsGiven}
+                  data-score={totalScore(robot)}
                   className={`grid grid-cols-12 px-4 py-3 items-center text-sm font-medium ${
                     isWinner ? 'bg-amber-500/10 text-amber-200' : 'text-neutral-300'
                   }`}
@@ -115,17 +123,19 @@ export const PodiumScreen: React.FC<PodiumScreenProps> = ({
                   </div>
 
                   <div className="col-span-2 text-right font-mono text-neutral-400 tabular-nums">
-                    {robot.bumpsGiven}
+                    {totalScore(robot).toFixed(0)}
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3 w-full">
           <button
+            autoFocus
             onClick={() => {
               soundSynth.ensureContext();
               onRematch();

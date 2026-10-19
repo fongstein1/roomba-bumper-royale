@@ -5,6 +5,7 @@
  * for both solo and 2-player split-screen gameplay.
  */
 import React, { useState } from 'react';
+import { totalScore } from '../game/scoring';
 import { GameMode, RobotProfile, RobotLiveState, DustPickup } from '../types/game';
 import {
   Volume2,
@@ -70,20 +71,22 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Find current match leader
-  const sortedByClean = [...profiles].sort((a, b) => (coverage[b.id] || 0) - (coverage[a.id] || 0));
+  const scoreFor = (id: string) => totalScore({ coveragePercent: coverage[id] || 0, dustPoints: states.find((s) => s.id === id)?.dustPoints || 0, bumpsGiven: states.find((s) => s.id === id)?.bumpsGiven || 0 });
+  const sortedByClean = [...profiles].sort((a, b) => scoreFor(b.id) - scoreFor(a.id));
   const currentLeader = sortedByClean[0];
 
   // Helper for touch/pointer button bindings
   const bindControl = (player: 'p1' | 'p2', action: 'up' | 'down' | 'left' | 'right' | 'boost') => ({
     onPointerDown: (e: React.PointerEvent) => {
       e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
       onVirtualInput(player, action, true);
     },
     onPointerUp: (e: React.PointerEvent) => {
       e.preventDefault();
       onVirtualInput(player, action, false);
     },
-    onPointerLeave: (e: React.PointerEvent) => {
+    onLostPointerCapture: (e: React.PointerEvent) => {
       e.preventDefault();
       onVirtualInput(player, action, false);
     },
@@ -91,18 +94,10 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
       e.preventDefault();
       onVirtualInput(player, action, false);
     },
-    onTouchStart: (e: React.TouchEvent) => {
-      e.preventDefault();
-      onVirtualInput(player, action, true);
-    },
-    onTouchEnd: (e: React.TouchEvent) => {
-      e.preventDefault();
-      onVirtualInput(player, action, false);
-    },
   });
 
   return (
-    <div className="absolute inset-0 z-10 pointer-events-none select-none flex flex-col justify-between p-3 sm:p-5 overflow-hidden">
+    <div className={`game-hud ${gameMode} absolute inset-0 z-10 pointer-events-none select-none flex flex-col justify-between p-3 sm:p-5 overflow-hidden`}>
       {/* Split-Screen Center Divider Line */}
       {gameMode === 'splitscreen' && (
         <>
@@ -118,7 +113,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
 
       {/* TOP PERIMETER: Timer, Territory Bar, and Quick Actions */}
       <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-1.5 pointer-events-auto">
-        <div className="w-full flex items-center justify-between gap-3 bg-neutral-950/80 border border-neutral-800 rounded-2xl px-4 py-2 shadow-xl backdrop-blur-md">
+        <div className="hud-topbar w-full flex items-center justify-between gap-3 bg-neutral-950/80 border border-neutral-800 rounded-2xl px-4 py-2 shadow-xl backdrop-blur-md">
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <button
@@ -136,8 +131,13 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               {isMuted ? <VolumeX className="w-4 h-4 text-neutral-500" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
             </button>
             <button
-              onClick={() => setShowControls((prev) => !prev)}
+              onClick={() => {
+                if (showControls) for (const player of ['p1', 'p2'] as const) for (const action of ['up', 'down', 'left', 'right', 'boost'] as const) onVirtualInput(player, action, false);
+                setShowControls((prev) => !prev);
+              }}
               title="Toggle On-Screen Virtual Controls"
+              aria-label="Toggle controls"
+              aria-pressed={showControls}
               className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
                 showControls
                   ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
@@ -150,6 +150,8 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
             <button
               onClick={() => setShowMinimap((prev) => !prev)}
               title="Toggle Arena Radar Minimap"
+              aria-label="Toggle radar"
+              aria-pressed={showMinimap}
               className={`p-2 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
                 showMinimap
                   ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
@@ -164,6 +166,8 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
           {/* Tabular Match Timer */}
           <div className="flex items-center gap-2">
             <div
+              role="timer"
+              aria-label="Time remaining"
               className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight tabular-nums ${
                 timeRemaining <= 15 ? 'text-amber-400 animate-pulse' : 'text-white'
               }`}
@@ -181,14 +185,14 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               </div>
             )}
             {currentLeader && (
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="hud-leader flex items-center gap-1.5 text-xs" data-testid="leader" data-player={currentLeader.id}>
                 <Award className="w-4 h-4 text-amber-400" />
                 <span className="text-neutral-400 hidden sm:inline">Leader:</span>
                 <span className="font-semibold text-neutral-200 truncate max-w-[85px] sm:max-w-[110px]">
                   {currentLeader.name}
                 </span>
                 <span className="font-mono font-bold text-cyan-400 tabular-nums">
-                  {(coverage[currentLeader.id] || 0).toFixed(0)}%
+                  {scoreFor(currentLeader.id).toFixed(0)} pts
                 </span>
               </div>
             )}
@@ -257,7 +261,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
 
       {/* TACTICAL TERRITORY RADAR MINIMAP */}
       {showMinimap && (
-        <div className="absolute top-28 right-3 sm:right-5 pointer-events-auto bg-neutral-950/90 border border-neutral-800 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 z-20">
+        <div className="arena-radar absolute top-28 right-3 sm:right-5 pointer-events-auto bg-neutral-950/90 border border-neutral-800 rounded-2xl p-2.5 shadow-2xl backdrop-blur-md flex flex-col gap-1.5 z-20">
           <div className="flex items-center justify-between text-[10px] font-bold tracking-wider text-neutral-400 uppercase">
             <span className="flex items-center gap-1 text-cyan-400">
               <Compass className="w-3.5 h-3.5" /> Arena Radar
@@ -319,6 +323,12 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               return (
                 <div
                   key={st.id}
+                  data-testid={`radar-${st.id}`}
+                  data-x={st.x}
+                  data-z={st.z}
+                  data-boost={st.boost}
+                  data-boosting={st.isBoosting}
+                  data-heading={st.heading}
                   style={{ left: `${left}%`, top: `${top}%` }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 >
@@ -372,7 +382,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
-                  <span className="font-bold text-xs sm:text-sm text-white truncate">{p1Profile.name}</span>
+                  <span className="font-bold text-xs sm:text-sm text-white truncate">{p1Profile.name} · {scoreFor('p1').toFixed(0)} pts</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs font-bold text-white tabular-nums">
@@ -490,7 +500,7 @@ export const GameHUDOverlay: React.FC<GameHUDOverlayProps> = ({
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5 truncate">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
-                  <span className="font-bold text-xs sm:text-sm text-white truncate">{p2Profile.name}</span>
+                  <span className="font-bold text-xs sm:text-sm text-white truncate">{p2Profile.name} · {scoreFor('p2').toFixed(0)} pts</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs font-bold text-white tabular-nums">

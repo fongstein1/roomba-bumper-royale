@@ -13,7 +13,44 @@ html, body, #root {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.game-shell { height: 100dvh; }
+.menu-scroll { overflow-y: auto; touch-action: pan-y; }
+.modal-card { max-height: calc(100dvh - 2rem); }
+.modal-card > * { flex-shrink: 0; }
+.garage-dock { max-height: 65dvh; }
+.garage-header { padding: 8px; border-radius: 16px; background: rgba(10, 10, 10, .8); }
+.game-hud { touch-action: none; }
+button { touch-action: manipulation; }
+button:focus-visible { outline: 3px solid #67e8f9; outline-offset: 3px; }
+input { user-select: text; -webkit-user-select: text; }
+
+@media (max-width: 639px) {
+  .hud-topbar { padding: 6px; gap: 6px; }
+  .hud-topbar > div { gap: 4px; }
+  .hud-leader { display: none; }
+  .garage-header > div { order: 3; width: 100%; }
+  .garage-header h2 { font-size: 1rem; }
+  .game-hud button[aria-label^="Player"] { min-width: 44px; min-height: 44px; }
+  .game-hud .grid.grid-cols-3 { width: 144px; height: 104px; gap: 4px; }
+  .splitscreen .touch-none { flex-direction: column; padding: 6px; gap: 4px; }
+  .splitscreen .touch-none > .flex { width: 100%; }
+  .splitscreen button[aria-label$="Turbo Boost"] { padding: 8px; }
+  .arena-radar { transform: scale(.8); transform-origin: top right; }
+}
+@media (max-height: 500px) {
+  .title-screen { padding: 16px; }
+  .title-screen .relative.mb-6 { display: none; }
+  .garage-dock { max-height: 58dvh; }
+  .arena-radar { display: none; }
+  .game-hud .touch-none { padding: 4px; }
+  .game-hud .grid.grid-cols-3 { height: 88px; }
+  .game-hud .touch-none button { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
 /* Custom styling for sleek game HUDs */

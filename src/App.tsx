@@ -74,6 +74,8 @@ const DEFAULT_PROFILES: RobotProfile[] = [
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const [gameState, setGameState] = useState<GameState>('title');
   const [gameMode, setGameMode] = useState<GameMode>('solo');
@@ -97,7 +99,14 @@ export default function App() {
   useEffect(() => {
     if (!mountRef.current) return;
 
-    const engine = new GameEngine(mountRef.current, profiles, gameMode);
+    let engine: GameEngine;
+    try {
+      engine = new GameEngine(mountRef.current, profiles, gameMode);
+    } catch (error) {
+      console.error('The 3D arena could not start', error);
+      setLoadError(true);
+      return;
+    }
     engineRef.current = engine;
 
     engine.onTimeUpdate = (remaining) => {
@@ -118,7 +127,8 @@ export default function App() {
         color,
         id: Date.now(),
       });
-      setTimeout(() => setHighValueToast(null), 3500);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setHighValueToast(null), 3500);
     };
 
     engine.onHighValueSpawned = (label) => {
@@ -127,7 +137,8 @@ export default function App() {
         color: '#eab308',
         id: Date.now(),
       });
-      setTimeout(() => setHighValueToast(null), 3500);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setHighValueToast(null), 3500);
     };
 
     engine.onMatchEnd = (stats) => {
@@ -135,25 +146,11 @@ export default function App() {
       setGameState('gameover');
     };
 
-    // Idle title / garage turntable loop
-    let idleAnimId: number;
-    const idleLoop = () => {
-      idleAnimId = requestAnimationFrame(idleLoop);
-      turntableAngleRef.current += 0.015;
-
-      if (engineRef.current) {
-        // If in garage or title, run idle turntable
-        // Note: when match is playing, engine.loop() handles its own renders
-        // Only render idle turntable when engine is not actively in match
-      }
-    };
-    idleLoop();
-
     // Initial render
     engine.renderGarageTurntable('p1', 0);
 
     return () => {
-      cancelAnimationFrame(idleAnimId);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
       engine.dispose();
       engineRef.current = null;
     };
@@ -178,6 +175,10 @@ export default function App() {
 
   // Start match
   const handleStartGame = (mode: GameMode) => {
+    if (!engineRef.current) return;
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setHighValueToast(null);
+    setMatchStats(null);
     setGameMode(mode);
     soundSynth.ensureContext();
     soundSynth.playCountDown(true);
@@ -244,6 +245,21 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [gameState]);
 
+  useEffect(() => {
+    const pauseOnLeave = () => {
+      if (gameState === 'playing') handlePause();
+    };
+    const visibilityChanged = () => {
+      if (document.hidden) pauseOnLeave();
+    };
+    window.addEventListener('blur', pauseOnLeave);
+    document.addEventListener('visibilitychange', visibilityChanged);
+    return () => {
+      window.removeEventListener('blur', pauseOnLeave);
+      document.removeEventListener('visibilitychange', visibilityChanged);
+    };
+  }, [gameState]);
+
   // Turntable idle animation for Garage screen
   useEffect(() => {
     if (gameState !== 'customizing' && gameState !== 'title') return;
@@ -262,7 +278,14 @@ export default function App() {
   }, [gameState, activeCustomizerId]);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-neutral-950 font-sans">
+    <div className="game-shell relative w-screen overflow-hidden bg-neutral-950 font-sans">
+      {loadError && (
+        <div role="alert" className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 p-6 bg-neutral-950 text-white text-center">
+          <h1 className="text-2xl font-bold">The 3D arena couldn’t start</h1>
+          <p>Try a browser with WebGL 2 and hardware acceleration enabled, then reload.</p>
+          <button className="rounded-xl bg-cyan-500 text-black px-6 py-3" onClick={() => window.location.reload()}>Reload game</button>
+        </div>
+      )}
       {/* Three.js Isolated Canvas Mount */}
       <div ref={mountRef} className="absolute inset-0 w-full h-full" />
 

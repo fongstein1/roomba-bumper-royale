@@ -22,7 +22,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onToggleMute,
 }) => {
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-between p-6 md:p-12 pointer-events-none select-none">
+    <div className="title-screen menu-scroll absolute inset-0 z-20 flex flex-col justify-between gap-5 p-6 md:p-12 select-none">
       {/* Top Bar with brand mark & mute toggle */}
       <div className="flex items-center justify-between w-full pointer-events-auto">
         <div className="flex items-center gap-3">
@@ -68,10 +68,11 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         </h1>
 
         <p className="text-base sm:text-lg text-neutral-400 max-w-lg mb-8 leading-relaxed">
-          Race high-performance robotic vacuums, ram rivals with spring bumpers, and sweep up the most floor across the designer penthouse!
+          A 90-second cleaning battle. Drive, bump rivals, and collect sparkling bounties. Highest total score wins!
         </p>
 
         {/* Primary Action Buttons */}
+        <p className="text-xs text-cyan-200 mb-4">1% floor = 10 pts · Dust = bonus pts · Heavy bump = 25 pts</p>
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full justify-center max-w-md">
           <button
             onClick={() => {
@@ -107,8 +108,8 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       </div>
 
       {/* Flat Bottom Control-Hint Line */}
-      <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-neutral-500 border-t border-neutral-800/80 pt-4 pointer-events-auto">
-        <div className="flex items-center gap-2 mb-2 sm:mb-0">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-center justify-between text-xs text-neutral-400 border-t border-neutral-800/80 pt-4 pointer-events-auto">
+        <div className="flex flex-wrap justify-center items-center gap-2 mb-2 sm:mb-0">
           <span className="font-mono text-neutral-400">P1: WASD + Space Boost</span>
           <span>·</span>
           <span className="font-mono text-neutral-400">P2: Arrow Keys + Enter Boost</span>
@@ -116,9 +117,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         <div className="flex items-center gap-3">
           <span>Esc Pause</span>
           <span>·</span>
-          <span>PBR Penthouse Arena</span>
+          <span>Touch: hold Forward + Steer + Boost</span>
           <span>·</span>
-          <span>Spring Elastic Bumpers</span>
+          <span>2 players share one device</span>
         </div>
       </div>
     </div>
